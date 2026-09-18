@@ -130,6 +130,29 @@ module GameSurfaces
     keyword_init: true
   )
 
+  FleetGridSpec = Struct.new(
+    :width,
+    :height,
+    :header,
+    :cells,
+    :row_origin,
+    :epoch,
+    :place,
+    :complete,
+    :action_name,
+    :status,
+    :bow_check,
+    :confirm_message,
+    :placed_message,
+    :ship_label,
+    :bow_label,
+    :bow_message,
+    :cancel_message,
+    :removed_message,
+    :empty_message,
+    keyword_init: true
+  )
+
   CardChoice = Struct.new(:id, :label, :value, keyword_init: true)
   Card = Struct.new(:id, :label, :value, :choices, :shift_choice, :choice_header, :sort_keys, keyword_init: true)
   CardZoneSpec = Struct.new(:id, :header, :cards, :empty_label, :hand_order, :hand_epoch, keyword_init: true)
@@ -485,15 +508,12 @@ module GameSurfaces
       @control.set_cells(display_rows)
       @control.on(:select) do |params|
         coordinates = params.to_a
-        emit_action(
-          "grid",
-          "select",
-          {
-            "x" => coordinates[0].to_i,
-            "y" => logical_y(coordinates[1])
-          }
-        )
+        emit_selection(coordinates[0].to_i, logical_y(coordinates[1]))
       end
+    end
+
+    def emit_selection(x, y)
+      emit_action("grid", "select", { "x" => x, "y" => y })
     end
 
     def fields
@@ -1098,6 +1118,142 @@ module GameSurfaces
     end
   end
 
+  # A grid on which a fleet is laid out locally. Marking a bow and a stern
+  # places one ship, and nothing leaves the computer until the fleet is
+  # complete, so placing costs no game event and no network round trip.
+  class FleetGrid < GridBoard
+    def initialize(spec, state: {})
+      @fleet = spec
+      stored = state_value_object(state, "ships")
+      @epoch = state_value_object(state, "epoch").to_s
+      @ships = @epoch == spec.epoch.to_s ? stored.to_a.map { |cells| cells.to_a.map(&:to_i) } : []
+      @epoch = spec.epoch.to_s
+      @bow = state_value(state, "bow", -1)
+      @bow = nil if @bow.to_i.negative?
+      super(
+        GridSpec.new(
+          width: spec.width, height: spec.height, header: spec.header,
+          cells: spec.cells, row_origin: spec.row_origin
+        ),
+        state: state
+      )
+    end
+
+    def state
+      super.merge("ships" => @ships, "bow" => @bow == nil ? -1 : @bow, "epoch" => @epoch)
+    end
+
+    def handle_command(name, _payload = {})
+      return false if name.to_s != "undo"
+
+      if @bow != nil
+        @bow = nil
+        redraw
+        speak(@fleet.cancel_message.to_s)
+        return true
+      end
+      if @ships.empty?
+        speak(@fleet.empty_message.to_s)
+        return true
+      end
+
+      @ships = @ships[0..-2]
+      redraw
+      speak([@fleet.removed_message, status_text].reject(&:empty?).join(" "))
+      true
+    end
+
+    def emit_selection(x, y)
+      cell = y * @spec.width.to_i + x
+      return seal_if_confirmed if @fleet.complete.call(@ships)
+
+      if @bow == nil
+        refusal = @fleet.bow_check == nil ? nil : @fleet.bow_check.call(@ships, cell)
+        if refusal != nil
+          speak(refusal.to_s)
+          return
+        end
+
+        @bow = cell
+        redraw
+        speak(@fleet.bow_message.to_s)
+        return
+      end
+      bow = @bow
+      cells, message = @fleet.place.call(@ships, bow, cell)
+      if cells == nil
+        speak(message.to_s)
+        return
+      end
+
+      @bow = nil
+      @ships = @ships + [cells]
+      redraw
+      announce_placement(cells)
+      seal_if_confirmed if @fleet.complete.call(@ships)
+    end
+
+    def seal_if_confirmed
+      message = @fleet.confirm_message.to_s
+      if !message.empty? && !confirm(message)
+        return if @ships.empty?
+
+        @ships = @ships[0..-2]
+        redraw
+        speak([@fleet.removed_message, status_text].reject(&:empty?).join(" "))
+        return
+      end
+
+      emit_action("grid", (@fleet.action_name || "seal").to_s, { "ships" => JSON.generate(@ships) })
+    end
+
+    private
+
+    def announce_placement(cells)
+      spoken = @fleet.placed_message == nil ? nil : @fleet.placed_message.call(cells, @ships)
+      speak([spoken.to_s, status_text].reject(&:empty?).join(" "))
+    end
+
+    def status_text
+      @fleet.status == nil ? "" : @fleet.status.call(@ships).to_s
+    end
+
+    def redraw
+      @control.set_cells(display_rows)
+      @control.header = header_text
+    end
+
+    def header_text
+      text = @fleet.status == nil ? @fleet.header.to_s : @fleet.status.call(@ships).to_s
+      return text if @bow == nil
+
+      "#{@fleet.bow_message} #{text}"
+    end
+
+    def display_rows
+      width = @spec.width.to_i
+      occupied = @ships.flatten
+      rows = @spec.cells.to_a.each_with_index.map do |row, y|
+        row.to_a.each_with_index.map do |value, x|
+          cell = y * width + x
+          marks = []
+          marks << @fleet.bow_label.to_s if cell == @bow
+          marks << @fleet.ship_label.to_s if occupied.include?(cell)
+          marks << value.to_s if !value.to_s.empty?
+          marks.reject(&:empty?).join(", ")
+        end
+      end
+      row_origin == :bottom ? rows.reverse : rows
+    end
+
+    def state_value_object(state, key)
+      return nil if !state.respond_to?(:key?)
+      return state[key] if state.key?(key)
+
+      state[key.to_sym]
+    end
+  end
+
   def self.reconcile(spec, previous: nil, state: {})
     candidates = previous.to_a if previous.is_a?(Array)
     candidates ||= previous.respond_to?(:reuse_candidates) ? previous.reuse_candidates : [previous].compact
@@ -1114,6 +1270,8 @@ module GameSurfaces
       TabooSurface.new(spec, state: state)
     when WordBoardSpec
       WordBoardSurface.new(spec, state: state)
+    when FleetGridSpec
+      FleetGrid.new(spec, state: state)
     when GridSpec
       GridBoard.new(spec, state: state)
     when CardTableSpec

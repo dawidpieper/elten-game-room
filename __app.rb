@@ -96,6 +96,7 @@ require_relative "games/mexican_train"
 require_relative "games/scrabble"
 require_relative "games/taboo"
 require_relative "games/biblios"
+require_relative "games/mancala"
 require_relative "games/registry"
 
 class EltenGameRoom < Program
@@ -171,7 +172,8 @@ class EltenGameRoom < Program
     GameRoomGames::MexicanTrain,
     GameRoomGames::Scrabble,
     GameRoomGames::Taboo,
-    GameRoomGames::Biblios
+    GameRoomGames::Biblios,
+    GameRoomGames::Mancala
   ])
 
   DEFAULT_SETTINGS = GameRoomPreferences.defaults(GAME_REGISTRY.ids).freeze

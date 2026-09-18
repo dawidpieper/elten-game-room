@@ -12,6 +12,7 @@ module GameSurfaces
   Card = Struct.new(:id, :label, :value, :choices, :shift_choice, :choice_header, :sort_keys, keyword_init: true)
   CardZoneSpec = Struct.new(:id, :header, :cards, :empty_label, :hand_order, :hand_epoch, keyword_init: true)
   CardTableSpec = Struct.new(:zones, keyword_init: true)
+  GridSpec = Struct.new(:width, :height, :header, :cells, :row_origin, keyword_init: true)
   Command = Struct.new(:id, :label, :enabled, :payload, keyword_init: true)
   CommandPanelSpec = Struct.new(:commands, keyword_init: true)
   PawnTrackItem = Struct.new(:id, :label, :action, keyword_init: true)
@@ -35,6 +36,7 @@ require_relative "../../games/uno"
 require_relative "../../games/poker"
 require_relative "../../games/makao"
 require_relative "../../games/biblios"
+require_relative "../../games/mancala"
 
 class NewGames116Repository
   def initialize(players)

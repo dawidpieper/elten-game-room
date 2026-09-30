@@ -306,6 +306,11 @@ i `docs/PRIVATE_STATE.md`:
 Nie zapisuj tokenów MCP, kluczy, certyfikatów, profili ELTEN-a, logów z danymi
 prywatnymi, poświadczeń serwera ani podpisanych paczek `.eltsetup`.
 
+Raporty, audyty, wyniki testów i podsumowania lokalnych zmian przechowuj
+lokalnie w ignorowanym przez Git katalogu `tmp/`. Nie dodawaj ich do
+śledzonych plików repozytorium, chyba że są konieczne do jego utrzymania
+lub użytkownik wyraźnie o to poprosi.
+
 ## Zasoby dźwiękowe
 
 Domyślny format dla każdego nowego efektu, głosu, pętli i muzyki:

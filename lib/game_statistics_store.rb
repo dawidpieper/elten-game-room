@@ -48,21 +48,33 @@ module GameRoomStatistics
         client = operation_client(cancellation_token)
         verify_schema_with_client!(client)
         table = @api.table(client, @app_uuid, Schema::EVENTS)
-        payloads.each do |payload|
-          check_context!(cancellation_token)
-          values = write_values(payload, cancellation_token, client)
-          check_context!(cancellation_token)
-          existing = table.select(where: {"event_key" => values["event_key"]}, columns: Schema::FIELDS,
-            order: [["__id", "asc"]], limit: 1).first
-          check_context!(cancellation_token)
-          if existing
-            fields = %w[started completed].include?(values["kind"]) ? Schema::FIELDS - ["day_key"] : Schema::FIELDS
-            raise Unavailable, "A statistics record conflicts with its original report" unless valid_record?(existing) && fields.all? { |key| existing[key] == values[key] }
-          else
-            row = table.insert(values)
+        payloads.each_slice(100) do |batch|
+          pending = {}
+          batch.each do |payload|
             check_context!(cancellation_token)
-            raise Unavailable, "A statistics write was not confirmed" unless row.is_a?(Hash) && row["__id"].is_a?(Integer) && row["__id"] > 0 && values.all? { |key, value| row[key] == value }
+            values = write_values(payload, cancellation_token, client)
+            check_context!(cancellation_token)
+            existing = pending[values["event_key"]] || table.select(where: {"event_key" => values["event_key"]}, columns: Schema::FIELDS,
+              order: [["__id", "asc"]], limit: 1).first
+            check_context!(cancellation_token)
+            if existing
+              fields = %w[started completed].include?(values["kind"]) ? Schema::FIELDS - ["day_key"] : Schema::FIELDS
+              raise Unavailable, "A statistics record conflicts with its original report" unless valid_record?(existing) && fields.all? { |key| existing[key] == values[key] }
+            else
+              pending[values["event_key"]] = values
+            end
           end
+          next if pending.empty?
+          check_context!(cancellation_token)
+          rows = table.insert_many(pending.values)
+          check_context!(cancellation_token)
+          valid = rows.is_a?(Array) && rows.length == pending.length && rows.all? do |row|
+            values = row.is_a?(Hash) ? pending[row["event_key"]] : nil
+            values && row["__id"].is_a?(Integer) && row["__id"] > 0 && values.all? { |key, value| row[key] == value }
+          end
+          valid &&= rows.map { |row| row["event_key"] }.uniq.length == pending.length &&
+            rows.map { |row| row["__id"] }.uniq.length == pending.length
+          raise Unavailable, "A statistics batch was not confirmed" unless valid
         end
         check_context!(cancellation_token)
         true

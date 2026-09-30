@@ -4,5 +4,6 @@
 *.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+docs/quiz-questions/*.txt text eol=lf
 *.ogg binary
 *.mo binary

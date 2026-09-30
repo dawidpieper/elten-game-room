@@ -1,3 +1,4 @@
+require_relative "specifications"
 # encoding: UTF-8
 require_relative "../scrabble_rules"
 require_relative "../game_session_clock"
@@ -6,8 +7,7 @@ require_relative "../game_room_localization"
 
 module GameSurfaces
   using GameRoomLocalization::Translations
-  WordBoardSpec = Struct.new(:board, :rack, :tiles, :alphabet, :epoch, :editable, :exchange,
-    :deadline, :clock_offset, :frozen_at, :clock_epoch_offset, :preview, :error_message, keyword_init: true)
+
 
   class WordBoardSurface
     include ActionEmitter
@@ -155,7 +155,7 @@ module GameSurfaces
       else
         @order.sort_by! do |tile|
           letter = @spec.tiles[tile][:letter]
-          [(@sort == 2 && !"aąeęioóuy".include?(letter) ? 1 : 0), @spec.alphabet.index(letter) || -1, tile]
+          [(@sort == 2 && !GameRoomContent.utf8("aąeęioóuy").include?(letter) ? 1 : 0), @spec.alphabet.index(letter) || -1, tile]
         end
       end
     end

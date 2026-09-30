@@ -31,6 +31,12 @@ class GameRoomTransport
     result
   end
 
+  def maintain_pending_work
+    @live_store.maintain_pending_work
+    with_retained_rooms { |_rooms| }
+    nil
+  end
+
   def with_retained_rooms
     @live_store.with_retained_rooms do |rooms|
       @mutex.synchronize do
@@ -158,6 +164,10 @@ class GameRoomTransport
 
   def game_session(session_id, table: nil)
     @live_store.game_session(session_id, table: table)
+  end
+
+  def find_game_session(table_or_id, force: false, &predicate)
+    @live_store.find_game_session(table_or_id, force: force, &predicate)
   end
 
   def append_game_action(**arguments)

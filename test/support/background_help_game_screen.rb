@@ -17,15 +17,21 @@ module EltenAPI::Tasks
   end
 end
 
+# Share the actual host timer type with realtime subclasses. Advance only
+# ordinary maintenance timers with the fixture clock; realtime keeps native
+# lifecycle/update and the match clock supplied by the client.
+Object.send(:remove_const, :FormTimer)
+FormTimer = EltenAPI::Controls::FormTimer
 class FormTimer
-  def initialize(interval, repeat: false, autostart: true, &block)
-    @interval, @repeat, @block = interval, repeat, block
-    @due = $help_clock + interval if autostart
-  end
+  alias native_update update
   def update
-    return unless @due && $help_clock >= @due
-    @due = @repeat ? $help_clock + @interval : nil
-    @block.call
+    return native_update unless instance_of?(FormTimer)
+    return if @monotonic_starttime == nil || @completed
+    @fixture_due ||= $help_clock + @time
+    return unless $help_clock >= @fixture_due
+    @fixture_due = $help_clock + @time
+    @completed = true unless @repeat
+    @action.call
   end
 end
 class FakeControl

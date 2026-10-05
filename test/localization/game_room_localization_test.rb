@@ -39,6 +39,13 @@ assert(translator.translate("Only in Czech") == "Pouze česky", "a missing prima
 assert(translator.translate("Chess") == "Szachy", "a fallback replaced an available primary translation")
 assert(translator.translate("Roll", context: "roll") == "Hodit", "context translations did not use the known-language chain")
 assert(translator.translate("Only in Czech", context: "unrelated") == "Only in Czech", "a different context leaked into the message")
+assert(translator.translate("Chess", context: "missing", fallback_to_common: true) == "Szachy", "same-language common translation lost priority")
+assert(translator.translate("Only in Czech", context: "unrelated", fallback_to_common: true) == "Pouze česky", "explicit common fallback lost the known-language chain")
+scoped = catalog({ "Roll" => "Wspólny rzut", "roll\u0004Roll" => "Autorski rzut" })
+scoped_translator = GameRoomLocalization::Translator.new(catalogs: { "pl" => scoped, "cs" => czech }, primary: "pl", known: ["cs"])
+assert(scoped_translator.translate("Roll", context: "roll", fallback_to_common: true) == "Autorski rzut", "author context lost priority within the primary language")
+scoped_translator = GameRoomLocalization::Translator.new(catalogs: { "pl" => catalog({ "Roll" => "Wspólny rzut" }), "cs" => czech }, primary: "pl", known: ["cs"])
+assert(scoped_translator.translate("Roll", context: "roll", fallback_to_common: true) == "Wspólny rzut", "foreign context overrode the primary common translation")
 [1, 2, 4, 5, 12, 21].each do |count|
   expected = count <= 4 ? "mince" : "mincí"
   assert(translator.translate("coin", plural: "coins", count: count) == expected, "Czech plural selection failed for #{count}")
@@ -71,7 +78,7 @@ assert(GameRoomLocalization.available_languages.map { |language| language.fetch(
 assert(runtime.instance_variable_get(:@reads) == 1, "UI translation rereads preferences")
 assert(runtime.instance_variable_get(:@catalog_reads) == 1, "UI translation rereads catalogs")
 normalized = GameRoomLocalization.normalize_settings({ "interface_language" => "en", "known_languages" => ["pl", "pl", "xx"] })
-assert(normalized == { "interface_language" => "en", "known_languages" => %w[en pl] }, "language preferences are not normalized or lose the primary language")
+assert(normalized == { "interface_language" => "en", "known_languages" => ["pl"] }, "normalization added the primary to explicitly selected languages")
 GameRoomLocalization.boot(runtime: runtime, host_language: "pl-PL", settings: { "interface_language" => "en" })
 assert(GameRoomLocalization.translate("Chess") == "Chess", "persisted English UI did not override Polish host at restart")
 puts "Runtime startup, preference normalization and catalog caching passed"
@@ -101,6 +108,7 @@ assert(namespace::ExampleGame.name == "Chess" && screen.later.call == "Chess", "
 assert(screen.count == "coins", "the plural helper lost English fallback")
 GameRoomLocalization.boot(settings: { "interface_language" => "pl" })
 assert(screen.label == "Szachy", "the refinement uses the global host dictionary")
+assert(GameRoomLocalization.normalize_settings({})["known_languages"] == [], "new settings must have no selected known languages")
 assert(!Object.new.respond_to?(:_, true), "Game Room changed host translation methods")
 puts "Lexically scoped instance/class/constants/callback translation passed"
 

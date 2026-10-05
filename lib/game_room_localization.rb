@@ -25,7 +25,6 @@ module GameRoomLocalization
     def boot(runtime: nil, directory: File.expand_path("../locale", __dir__), settings: nil, host_language: nil, known_languages: nil)
       runtime ||= Programs.current_runtime if defined?(Programs) && Programs.respond_to?(:current_runtime)
       host_language ||= Configuration.language if defined?(Configuration) && Configuration.respond_to?(:language)
-      known_languages ||= Session.languages.to_s.split(",") if defined?(Session) && Session.respond_to?(:languages)
       @catalogs = {}
       if runtime
         codes = (runtime.language_files.keys + runtime.manifest.supported_languages).map { |code| language_code(code) }.compact.uniq
@@ -43,7 +42,7 @@ module GameRoomLocalization
       end.freeze
       @default_primary = language_code(host_language)
       @default_primary = "en" unless available_codes.include?(@default_primary)
-      @default_known = known_languages.is_a?(Array) ? known_languages : [@default_primary]
+      @default_known = known_languages.is_a?(Array) ? known_languages : []
       values = normalized_settings(settings)
       @translator = Translator.new(catalogs: @catalogs, primary: values.fetch("interface_language"), known: values.fetch("known_languages"))
       @translator
@@ -91,7 +90,7 @@ module GameRoomLocalization
       primary = language_code(source["interface_language"])
       primary = @default_primary unless available_codes.include?(primary)
       known = source["known_languages"].is_a?(Array) ? source["known_languages"] : @default_known
-      requested = known.map { |code| language_code(code) } + [primary]
+      requested = known.map { |code| language_code(code) }
       { "interface_language" => primary, "known_languages" => available_codes.select { |code| requested.include?(code) } }
     end
 
@@ -166,12 +165,15 @@ module GameRoomLocalization
       @known = known.to_a.map(&:to_s).uniq
     end
 
-    def translate(source, plural: nil, count: nil, context: nil)
+    def translate(source, plural: nil, count: nil, context: nil, fallback_to_common: false)
       source = source.to_s.dup.force_encoding(Encoding::UTF_8)
       fallback = plural && count.to_i != 1 ? plural.to_s.dup.force_encoding(Encoding::UTF_8) : source
       ([@primary] + @known.reject { |language| language == "en" } + ["en"]).uniq.each do |language|
         return fallback if language == "en"
         translated = @catalogs[language]&.translate(source, context: context, count: count)
+        if !translated && context && fallback_to_common
+          translated = @catalogs[language]&.translate(source, count: count)
+        end
         return translated if translated
       end
       fallback

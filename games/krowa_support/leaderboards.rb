@@ -215,22 +215,29 @@ module GameRoomGames
         alert(_("Enter a word or word fragment."))
         return
       end
-      words = network(_("Searching words")) { @store.ranked_words }
+      words = network(_("Searching words")) do
+        GameRoomClock.synchronize
+        raise "Unconfirmed server time" unless GameRoomClock.synchronized?
+        today = GameRoomKrowa::WarsawDate.today_id(clock: -> { Time.at(GameRoomClock.now).utc })
+        @store.search_ranked_words(needle, today: today)
+      end
       return if words == nil
-      matches = words.select { |row| row["word"].to_s.include?(needle) }
-      show_word_browser(matches, header: _("Search results: %{query}") % {query: needle})
+      show_word_browser(words, header: _("Search results: %{query}") % {query: needle})
     end
 
     def show_word_browser(words, header:)
       rows = words.map do |row|
-        [row["word"].to_s, row["best_attempts"].to_i.to_s,
+        ranking = row['daily_date'] ? _("Daily Krowa: %{date}") % {date: row['daily_date']} : _("Word leaderboard")
+        [row["word"].to_s, ranking, row["best_attempts"].to_i.to_s,
           row["result_count"].to_i.to_s, score_date(row["last_result_at"])]
       end
       selected = show_table(
-        [_('Word'), _('Best result'), _('Results'), _('Last update')],
+        [_('Word'), _('Leaderboard'), _('Best result'), _('Results'), _('Last update')],
         rows, header: header, empty_label: _("No matching words")
       )
-      show_word_ranking(words[selected]["word"]) if selected != nil
+      return if selected == nil
+      row = words[selected]
+      row['daily_date'] ? show_daily_ranking(row['daily_date']) : show_word_ranking(row['word'])
     end
 
     def show_tower_ranking

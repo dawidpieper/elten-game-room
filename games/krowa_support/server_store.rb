@@ -241,6 +241,53 @@ module GameRoomGames
       ).to_a.select { |row| normalized_ranked_word(row["word"]) != nil }
     end
 
+    # Search joins published days with their canonical saved assignments, not
+    # today's dictionary order. Two paginated scans avoid a request per day.
+    def search_ranked_words(query, today:)
+      current = normalized_date(today)
+      needle = @bank.normalize(query)
+      return [] if current == nil || needle.empty? || !available?
+
+      matches = ranked_words.select { |row| row['word'].include?(needle) }
+      assignments = {}
+      offset = 0
+      loop do
+        page = daily_assignments_table.select(order: [['__id', 'asc']], limit: 500, offset: offset).to_a
+        page.each do |row|
+          date = date_from_key(row['day_key'])
+          next unless date && date < current && !assignments.key?(date)
+          word = begin
+            GameRoomKrowa::DailyAssignment.open(date, row['assignment'])
+          rescue ArgumentError
+            nil
+          end
+          assignments[date] = word
+        end
+        offset += page.length
+        break if page.length < 500
+      end
+      assignments.select! { |_date, word| word && word.include?(needle) }
+      return matches if assignments.empty?
+
+      offset = 0
+      loop do
+        page = daily_scores_table.select(columns: ['day_key'], group_by: ['day_key'],
+          aggregates: {
+            'last_result_at' => {'function' => 'max', 'column' => '__insertion_time'},
+            'best_attempts' => {'function' => 'min', 'column' => 'attempts'},
+            'result_count' => {'function' => 'count', 'column' => '__id'}
+          }, order: [['day_key', 'desc']], limit: 500, offset: offset).to_a
+        page.each do |row|
+          date = date_from_key(row['day_key'])
+          word = assignments[date]
+          matches << row.merge('word' => word, 'daily_date' => date) if word
+        end
+        offset += page.length
+        break if page.length < 500
+      end
+      matches.sort_by { |row| [-row['last_result_at'].to_i, row['word'], row['daily_date'].to_s] }
+    end
+
     # Details are inserted first. A ranking row therefore never points at a
     # half-written run when a bulk operation fails.
     def publish_tower(run_code:, participants:, rounds:)

@@ -1,5 +1,6 @@
 require_relative "game_participants"
 require_relative "game_turn_clock"
+require_relative "game_sound_output"
 
 module GameRoomSounds
   ASSET_NAMES = %w[
@@ -105,11 +106,11 @@ module GameRoomSounds
       volume = program.send(:game_room_sound_volume, name.to_s) * gain
       return nil if volume <= 0
 
-      program.play_sound_from_asset(name.to_s, volume: volume)
+      play_asset(program, name.to_s, volume)
     elsif gain != 1.0
-      program.play_sound_from_asset(name.to_s, volume: gain)
+      play_asset(program, name.to_s, gain)
     else
-      program.play_sound_from_asset(name.to_s)
+      play_asset(program, name.to_s, 1.0)
     end
   rescue Exception => error
     Log.warning("ELTEN Game Room sound #{name} failed: #{error.class}: #{error.message}") if defined?(Log)
@@ -118,6 +119,14 @@ module GameRoomSounds
 
   def play_all(program, names)
     names.to_a.each { |name| play(program, name) }
+  end
+
+  def play_asset(program, name, volume)
+    if %w[connect disconnect chatmsg notice table_notice invitation_rejected ding].include?(name)
+      program.play_sound_from_asset(name, volume: volume)
+    else
+      GameRoomSoundOutput.play(program, name, volume: volume)
+    end
   end
 
   def play_event(program, **event_data)

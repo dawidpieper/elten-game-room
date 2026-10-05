@@ -28,6 +28,8 @@ module GameRoomGames
 
     def id; "scrabble"; end
     def name; _("Scrabble"); end
+    def personal_settings_label; _("Toggle announcements of placed and removed letters"); end
+    def personal_settings_action; :toggle_scrabble_draft_speech; end
     def background_client?; true; end
     def build_client(program, transport:, **_services)
       require_relative "../lib/scrabble_preview"

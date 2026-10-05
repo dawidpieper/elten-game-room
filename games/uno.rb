@@ -64,14 +64,14 @@ module GameRoomGames
       "uno"
     end
 
-    def notification_option_keys(_options); %w[deck interceptions super_interceptions]; end
+    def notification_option_keys(_options); %w[deck interceptions super_interceptions score_limit]; end
     def notification_variant(options)
       interception = if options["interceptions"] == true || options["super_interceptions"] == true
         _("with interceptions")
       elsif options["interceptions"] == false && options["super_interceptions"] == false
         _("without interceptions")
       end
-      [notification_choice(options, "deck"), interception].compact.join(", ")
+      [notification_choice(options, "deck"), interception, notification_points(options, "score_limit")].compact.join(", ")
     end
 
     def eliminated_from_game?(replay, viewer)

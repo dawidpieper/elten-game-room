@@ -64,6 +64,11 @@ Ruby, bez rekonstrukcji dawnej selekcji słownika lub zmiany autorstwa i licencj
 TXT i generator pozostają poza instalatorem; runtime używa wygenerowanego Ruby.
 Na końcu listy dopisano dziewięć haseł zatwierdzonych przez autora projektu:
 łam, zacios, zaciosy, prosię, silnia, silnie, afro, szmat i ksero.
+5 października 2026 dopisano następne 60 zatwierdzonych haseł (34 i później
+kolejne 26), bez zmiany wcześniejszej kolejności. Aktualny plik zawiera
+98 247 wierszy; sprawdzają
+to generator i jego test. Dopisanie rzeczownika nie tworzy lokalnej
+definicji: objaśnienia są pobierane z SJP dotychczasową ścieżką na żądanie.
 
 ## Tłumaczenia interfejsu
 
@@ -181,6 +186,12 @@ może wtedy zapisać bezwzględne ścieżki zamiast nazw względnych i nie rozpo
 katalogów tłumaczeń ani dźwięków. Końcowa kontrola zawartości odrzuca taką paczkę.
 
 ## Przygotowanie wydania
+
+Główny `README.md` i tłumaczenia `content/readme/{EN,CS,ES,RU}.md` należą do
+wymaganych zasobów instalatora. Program odczytuje właściwy plik przez
+`asset_path`, według języka interfejsu, po wybraniu README w menu głównym.
+Nie twórz drugiej kopii tekstu w kodzie i nie dołączaj całego `docs/`.
+Dokumenty są zwykłymi plikami obok kontenera kodu w `.eltsetup`.
 
 1. Wykonaj kontrole zgodnie z zatwierdzonym zakresem. Przy zmianie samego
    pakowania sprawdź `test/tooling/release_files_test.rb` oraz celowane testy binarne,

@@ -98191,6 +98191,66 @@ module GameRoomKrowa
       afro
       szmat
       ksero
+      szamanka
+      szamanki
+      sokownik
+      sokowniki
+      geomanta
+      geomantka
+      geomanci
+      geomantki
+      mop
+      mopy
+      bus
+      busy
+      pub
+      puby
+      tarta
+      tarty
+      świrus
+      świrusy
+      świruska
+      świruski
+      cytacik
+      cytaciki
+      owocek
+      owocki
+      token
+      tokeny
+      geomancje
+      geomancja
+      nekromanta
+      nekromanci
+      nekromantka
+      nekromantki
+      nekromancja
+      nekromancje
+      ranking
+      rankingi
+      odsłona
+      odsłony
+      billing
+      billingi
+      kasting
+      kastingi
+      halling
+      hallingi
+      hosting
+      hostingi
+      leasing
+      leasingi
+      lifting
+      liftingi
+      ścierak
+      ścieraki
+      roaming
+      roamingi
+      szpring
+      szpringi
+      pluszak
+      pluszaki
+      oscypek
+      oscypki
     KROWA_NOUNS
     WORDS.freeze
   end

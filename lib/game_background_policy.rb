@@ -54,4 +54,10 @@ module GameRoomBackgroundPolicy
   def turn_sound?(program, covered: false)
     outside?(program, covered: covered) && enabled?(program, "background_turn_sound")
   end
+
+  def game_sounds?(program, audio_game: false, covered: false)
+    mode = program.class.normalized_settings['background_game_sounds'] if program.class.respond_to?(:normalized_settings)
+    mute = mode == 'all' || mode == 'audio' && audio_game
+    !mute || !outside?(program, covered: covered)
+  end
 end

@@ -17,7 +17,13 @@ registry.ids.each do |id|
   puts "#{id}: #{message}"
 end
 read = ->(id, options) { GameRoomTableVariant.text(registry.build(id), GameRoomTableVariant.payload(registry.build(id), options)) }
-assert(read.call("spades", {"quicksand" => true, "team_size" => 2, "score_limit" => 500}) == "Quicksand", "Spades includes team or score")
+assert(read.call("spades", {"quicksand" => true, "team_size" => 2, "score_limit" => 500}) == "Quicksand, 500 points", "Spades missing score or including team")
+assert(read.call("audio_ball", {"difficulty" => 3, "sets_to_win" => 3}) == "Normal, first to 3 sets", "Audio Ball lost difficulty or winning-set count")
+assert(read.call("categories", {"answer_language" => "pl", "target_score" => 100}) == "Polish, 100 points", "Categories missing language or score")
+assert(read.call("uno", {"score_limit" => 500}) == "500 points", "UNO points missing or missing options guessed")
+[nil, 0, -1, '100', true].each do |value|
+  assert(read.call('uno', {'score_limit' => value}).empty?, 'Invalid points printed')
+end
 assert(!read.call("poker", registry.build("poker").default_options).match?(/limit|chips|blind/i), "Poker extras")
 assert(read.call("uno", {"deck" => "flip", "interceptions" => true}).include?("with interceptions"), "UNO interception missing")
 assert(read.call("uno", {}).empty?, "UNO absent data guessed")

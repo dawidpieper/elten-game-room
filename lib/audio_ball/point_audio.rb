@@ -1,5 +1,6 @@
 require_relative "../realtime/score_announcements"
 require_relative "sound_pack"
+require_relative '../game_sound_output'
 
 module GameRoomAudioBall
   class PointAudio
@@ -75,9 +76,10 @@ module GameRoomAudioBall
       @frequencies[key] = sound.frequency
     end
 
-    def play_sound(name, level: 1.0)
+    def play_sound(name, level: 1.0, silent: false)
       sound = @sounds[name]
       return unless sound && gain(name) > 0
+      GameRoomSoundOutput.apply(@program, sound, 0.0, restart: true, silent: silent)
       @levels[name] = level
       apply_mix(name, level)
       sound.frequency = @frequencies[name]
@@ -88,7 +90,7 @@ module GameRoomAudioBall
 
     def apply_mix(name, level)
       @sounds[name].pan = 0
-      @sounds[name].volume = (level * gain(name)).clamp(0.0, 1.0)
+      GameRoomSoundOutput.apply(@program, @sounds[name], (level * gain(name)).clamp(0.0, 1.0))
     end
 
     # Audio Ball has no personal score slider; only shared Game Room volume.

@@ -1,9 +1,9 @@
 {
   "packs": {
     "quiz.wikidata.pl": {
-      "count": 11083,
-      "version": 6,
-      "checksum": "be5969211d041e624e251630efdcf4260e191b683ce03e1ee5261cd8b53fcc7e"
+      "count": 14887,
+      "version": 8,
+      "checksum": "8a5d0db5bfea754a21940892cab235752582e7f1bb66bc1886df38a743ea1406"
     },
     "quiz.witcher.pl": {
       "count": 5132,

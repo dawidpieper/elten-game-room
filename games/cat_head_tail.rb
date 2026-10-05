@@ -33,7 +33,7 @@ module GameRoomGames
     end
 
     def name
-      _("Cat, head, tail")
+      "Cat, head, tail"
     end
 
     def rule_sections
@@ -203,9 +203,7 @@ module GameRoomGames
     # its Roll and Bank translations must not overwrite those used by Farkle.
     # Use the shared dictionary for texts added by the Game Room framework.
     def _(source)
-      key = "cat_head_tail\u0004#{source}"
-      translated = super(key)
-      GameRoomContent.utf8(translated == key ? super(source) : translated)
+      GameRoomLocalization.translate(source, context: "cat_head_tail", fallback_to_common: true)
     end
 
     def initial_state(players, options)

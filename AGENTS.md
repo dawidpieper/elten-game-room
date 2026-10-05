@@ -452,8 +452,11 @@ nie wydania gry. Manifest źródłowy w `__app.rb` zachowuje LF.
 Nigdy nie przekazuj całego repozytorium do rekursywnego pakowania ELTEN-a.
 Najpierw przygotuj oddzielny katalog przez `tools/stage-release.rb`.
 Wspólna lista dopuszcza kod produkcyjny, dane gier, nagrania, gotowe MO,
-manifesty oraz licencje i informacje o źródłach. Testy, narzędzia, docs,
-AGENTS/README/CONTRIBUTING/CHANGELOG.md, źródłowe katalogi tłumaczeń,
+manifesty, główny README.md z tłumaczeniami content/readme/{EN,CS,ES,RU}.md
+oraz licencje i informacje o źródłach. README jest zasobem odczytywanym
+w głównym menu (po Ustawieniach, przed Co nowego), według języka interfejsu.
+Zachowuj jedną treść każdego języka w repo i instalatorze; nie generuj drugiej kopii w Ruby.
+Testy, narzędzia, docs, AGENTS/CONTRIBUTING/CHANGELOG.md, źródłowe katalogi tłumaczeń,
 raporty importu i materiały redakcyjne pozostają w repo, nie w instalatorze.
 Zasady i changelog aplikacji są w przygotowanym kodzie/tłumaczeniach.
 Nowy nietypowy zasób wykonawczy dodawaj jawnie do reguł pakowania wraz
@@ -464,3 +467,25 @@ Testy uruchamiaj z katalogu źródeł przeciw gotowej paczce. Brak testów
 w paczce jest oczekiwany; brak produkcyjnego pliku nigdy nie może być
 maskowany wczytaniem jego odpowiednika z dysku. Zachowaj ochronę krótkiej
 ścieżki stagingu na Windows i nie wydawaj archiwum z samym manifestem.
+
+### Dokumentacja użytkowa i wszystkie wersje językowe
+
+Przy zmianach funkcji, skrótów, ustawień, ścieżek menu, zasad i ograniczeń
+samodzielnie sprawdzaj i aktualizuj odpowiednie rozdziały README w KAŻDYM
+obsługiwanym języku. Nie czekaj na przypomnienie użytkownika. Polska wersja
+jest w README.md, pozostałe w content/readme/<LANG>.md; to pełne tłumaczenia,
+nie skrócone opisy. Zachowuj ręczne poprawki autora i usunięte przez niego
+fragmenty. Nie przywracaj usuniętej treści przy aktualizacji tłumaczeń.
+Dodanie języka interfejsu wymaga również pełnego README, podłączenia wyboru
+dokumentu i jawnej listy zasobów instalatora oraz rozszerzenia testów.
+
+W README, zasadach i pozostałej dokumentacji pilnuj poprawnego Markdowna,
+hierarchii i kolejności nagłówków, akapitów, list, odstępów oraz działających
+odnośników i spisu treści. Nie spłaszczaj treści do jednego ciągu tekstu.
+Zasady zachowują źródło JSON i natywne nagłówki ELTEN-a — nie przenoś do
+ich zwykłych akapitów surowego Markdowna, którego widok nie interpretuje.
+Kontroluj dokument nie tylko jako plik: sprawdź odczyt w natywnej kontrolce,
+nawigację nagłówkami, Enter w spisie i powrót Escape, także z binarnie
+wczytanych źródeł oraz przy polskich i innych znakach Unicode.
+Test zgodności języków README musi wykrywać nowy język manifestu bez
+dokumentu; sam fallback do angielskiego nie oznacza ukończonego tłumaczenia.

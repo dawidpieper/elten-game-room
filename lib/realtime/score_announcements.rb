@@ -2,6 +2,7 @@
 # gain policy, effects and lifecycle; this module never reads Pong preferences
 # or a paddle/flight snapshot.
 require_relative '../game_background_policy'
+require_relative '../game_sound_output'
 
 module GameRoomRealtime
   module ScoreAnnouncements
@@ -33,14 +34,15 @@ module GameRoomRealtime
       names = ['pong_scores', *ordered.map { |n| "pong_number#{n}" }]
       recorded = ordered.all? { |n| n.is_a?(Integer) && n.between?(0, 21) } && names.all? { |n| @sounds[n] }
       score = recorded ? names : [{ speech: score_text || ordered.join(' : ') }]
-      score.each_with_index { |item, i| @score_queue << [at + i * 0.5, item] }
+      silent = GameRoomSoundOutput.current(@program)&.muted? == true
+      score.each_with_index { |item, i| @score_queue << [at + i * 0.5, item, silent] }
       if finished
         final_at = at + 2.7
         voice = winner == viewer ? 'pong_youwin' : 'pong_theywin'
         result = !@sounds[voice] ? { speech: result_text } : voice
-        @score_queue << [final_at, result] if !result.is_a?(Hash) || !result[:speech].to_s.empty?
+        @score_queue << [final_at, result, silent] if !result.is_a?(Hash) || !result[:speech].to_s.empty?
         score_result_scheduled(final_at, winner, viewer) if winner != nil
-        score.each_with_index { |item, i| @score_queue << [final_at + 0.3 + i * 0.5, item] }
+        score.each_with_index { |item, i| @score_queue << [final_at + 0.3 + i * 0.5, item, silent] }
       end
     end
 
@@ -71,17 +73,22 @@ module GameRoomRealtime
     end
 
     def advance_score_queue(now)
+      # A recording queued before leaving the table must not become audible
+      # on return merely because its scheduled start was still in the future.
+      if GameRoomSoundOutput.current(@program)&.muted?
+        @score_queue.each { |entry| entry[2] = true unless entry[1].is_a?(Hash) }
+      end
       # A delayed UI tick must not start/cut three voices in the same frame.
       voice_busy = @voice && @announcing.key?(@voice)
       speech_busy = @speech_pending && now < @speech_deadline && @speech_active.call
       @speech_pending = false unless speech_busy
       if !voice_busy && !speech_busy && @score_queue.first && now >= @score_queue.first[0]
-        scheduled, item = @score_queue.shift
+        scheduled, item, silent = @score_queue.shift
         if item.is_a?(Hash) && personal_gain('pong_scores') > 0
           @speech_pending = @speaker.call(item[:speech]) != false
           @speech_deadline = now + 30.0
         elsif !item.is_a?(Hash)
-          play_voice(item)
+          play_voice(item, silent: silent)
         end
         lag = now - scheduled
         @score_queue.each { |entry| entry[0] += lag } if lag > 0.05
@@ -105,14 +112,14 @@ module GameRoomRealtime
       play_voice(GOAL_VOICES[@rng.rand(GOAL_VOICES.length)])
     end
 
-    def play_voice(name)
+    def play_voice(name, silent: false)
       @sounds[@voice]&.pause if @voice
       @announcing.delete(@voice)
-      @voice = play_announcement(name)
+      @voice = play_announcement(name, silent: silent)
     end
 
-    def play_announcement(name)
-      sound = play_sound(name, level: ANNOUNCER_LEVEL)
+    def play_announcement(name, silent: false)
+      sound = play_sound(name, level: ANNOUNCER_LEVEL, silent: silent)
       return unless sound
       duration = sound.respond_to?(:length) ? sound.length.to_f : 3.0
       duration = 3.0 unless duration.finite? && duration > 0

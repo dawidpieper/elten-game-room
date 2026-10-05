@@ -1,6 +1,7 @@
 require_relative 'audio_extras'
 require_relative 'preferences'
 require_relative '../realtime/score_announcements'
+require_relative '../game_sound_output'
 
 module GameRoomPong
   class Audio
@@ -220,7 +221,9 @@ module GameRoomPong
       right = [volume * (pan < 0 ? (1 + pan)**1.4 : 1), 1.0].min
       volume = [left, right].max
       pan = volume.zero? ? 0 : (right >= left ? 1 - left / right : right / left - 1)
-      @sounds[name].pan, @sounds[name].volume = pan, volume
+      @sounds[name].pan = pan
+      GameRoomSoundOutput.apply(@program, @sounds[name], volume, continuous: name == 'pong_ball' || LOOP_ASSETS.include?(name))
+      volume
     end
 
     def play_effect(kind, side, x, y, snapshot, viewer)
@@ -295,9 +298,10 @@ module GameRoomPong
       @crowd_result = [at, winner == viewer ? 'won' : 'lost']
     end
 
-    def play_sound(name, pan: 0, level: 1.0, pitch: 1.0)
+    def play_sound(name, pan: 0, level: 1.0, pitch: 1.0, silent: false)
       sound = @sounds[name]
       return unless sound && gain(name) > 0
+      GameRoomSoundOutput.apply(@program, sound, 0.0, restart: true, silent: silent)
       @pans[name], @levels[name] = pan, level
       apply_mix(name, pan, level)
       sound.frequency = @frequencies[name] * pitch
@@ -310,8 +314,8 @@ module GameRoomPong
       sound = @sounds[name]
       return unless sound
       @pans[name], @levels[name] = pan, level
-      apply_mix(name, pan, level)
-      if sound.volume > 0
+      audible_level = apply_mix(name, pan, level)
+      if audible_level > 0
         sound.play unless sound.playing?
       else
         sound.pause if sound.playing?

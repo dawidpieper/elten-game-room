@@ -1,5 +1,14 @@
 # Informacje o składnikach zewnętrznych
 
+## Polski zestaw pytań ogólnych
+
+Od wersji 2.0.4.4 zestaw „Wiedza ogólna” korzysta z PolQA i części 1z10
+zbioru MAUPQA (IPI PAN, CC BY-SA 4.0) oraz pytań z archiwum Milionerów
+Polsatu, użytych na podstawie potwierdzenia uprawnień przez właściciela
+aplikacji. Licencja CC BY-SA nie obejmuje automatycznie tego ostatniego
+podzbioru. Autorstwo, źródła, zakres redakcji i warunki poszczególnych
+części opisano w `content/QUIZ_PL_GENERAL_SOURCES.txt`.
+
 ## Unicode normalization
 
 Katalog `lib/vendor/unicode_normalize/` zawiera implementację normalizacji

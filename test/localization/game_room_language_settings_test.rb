@@ -60,8 +60,27 @@ end
 settings_dialog do |form|
   assert(form.fields.first.options == ["General", "Lobby messages", "Notification settings", "Sounds", "Widget"],
     "General must contain language and the common background settings")
+  assert(form.fields[2].multiselections.empty?, "known languages must be unchecked by default")
+  mute = form.fields.find { |field| field.respond_to?(:header) && field.header == 'Mute game sounds when switching to another window' }
+  assert(mute.options == ['All games', 'Audio games only', 'Do not mute'] && mute.index == 2,
+    'Background sound selector has wrong choices/default')
   form.cancel_button.trigger(:press)
 end
+
+%w[all audio never].each_with_index do |mode, index|
+  updated = settings_dialog('background_game_sounds' => 'never') do |form|
+    field = form.fields.find { |control| control.respond_to?(:header) && control.header == 'Mute game sounds when switching to another window' }
+    field.index = index
+    form.accept_button.trigger(:press)
+  end
+  assert(updated['background_game_sounds'] == mode, 'Background sound selection was not saved')
+  settings_dialog(updated) do |form|
+    field = form.fields.find { |control| control.respond_to?(:header) && control.header == 'Mute game sounds when switching to another window' }
+    assert(field.index == index, 'Background sound choice was lost on reopening')
+    form.cancel_button.trigger(:press)
+  end
+end
+assert(GameRoomPreferences.normalize({'background_game_sounds' => 'invalid'}, [])['background_game_sounds'] == 'never', 'Unknown sound mode is not safe/default')
 
 settings_dialog("interface_language" => "pl", "known_languages" => %w[pl en]) do |form|
   categories = form.fields.first
@@ -89,16 +108,16 @@ end
 settings_dialog("interface_language" => "pl", "known_languages" => %w[pl en]) do |form|
   primary, known = form.fields[1..2]
   known.deselect_multiselection_indices([1])
-  assert(known.multiselections == [0, 1], "the primary language can be unchecked")
+  assert(known.multiselections == [0], "the primary language must be removable from known languages")
   primary.index = 0
   primary.trigger(:move)
   known.deselect_multiselection_indices([0, 1])
-  assert(known.multiselections == [0], "changing primary must unlock the previous language and retain the new one")
+  assert(known.multiselections == [], "select-none must remove every known language")
   primary.index = 1
   primary.trigger(:move)
-  assert(known.multiselections == [0, 1], "changing primary did not check the new primary")
+  assert(known.multiselections == [], "changing primary selected a known language")
   known.deselect_multiselection_indices([0, 1])
-  assert(known.multiselections == [1], "select-none removed the primary language")
+  assert(known.multiselections == [], "known languages cannot remain empty")
   form.cancel_button.trigger(:press)
 end
 
@@ -114,6 +133,7 @@ saved = settings_dialog(original) do |form|
   primary.index = 1
   primary.trigger(:move)
   known.deselect_multiselection_indices([0])
+  known.select_multiselection_indices([1])
   form.accept_button.trigger(:press)
 end
 assert(saved["interface_language"] == "pl" && saved["known_languages"] == ["pl"], "Save did not return the staged language choices")
@@ -136,8 +156,8 @@ settings_dialog(saved) do |form|
 end
 
 normalized = GameRoomPreferences.normalize(original.merge("interface_language" => "PL-pl", "known_languages" => %w[en en xx]), [])
-assert(normalized["interface_language"] == "pl" && normalized["known_languages"] == %w[en pl],
-  "preferences must merge normalized languages and include the primary language")
+assert(normalized["interface_language"] == "pl" && normalized["known_languages"] == ["en"],
+  "preferences must normalize selected languages without adding the primary")
 assert(normalized["unrelated"] == original["unrelated"] && normalized["pong"] == original["pong"] &&
   normalized["table_presets"] == original["table_presets"] && normalized["sound_volumes"] == original["sound_volumes"],
   "normalizing language preferences changed unrelated settings")
@@ -148,7 +168,7 @@ assert(Marshal.dump(original) == before, "normalizing preferences mutated saved 
   assert(actual.slice("interface_language", "known_languages") == expected, "preference defaults differ from the language backend")
 end
 symbolized = GameRoomPreferences.normalize({ interface_language: "pl", known_languages: [] }, [])
-assert(symbolized["interface_language"] == "pl" && symbolized["known_languages"] == ["pl"], "language normalization discarded symbol-keyed preferences")
+assert(symbolized["interface_language"] == "pl" && symbolized["known_languages"] == [], "language normalization discarded symbol-keyed preferences or filled the empty list")
 
 language_tip = "Missing translations use other known languages, then English. Restart ELTEN to apply language changes."
 settings_dialog do |form|
@@ -199,16 +219,16 @@ future_saved = settings_dialog("interface_language" => "en", "known_languages" =
   primary.trigger(:move)
   known.select_multiselection_indices([polish_index])
   known.deselect_multiselection_indices([czech_index, english_index])
-  assert(known.multiselections.sort == [czech_index, polish_index].sort, "the future primary was removable or a known language was lost")
+  assert(known.multiselections == [polish_index], "the future primary changed the independent known-language list")
   form.accept_button.trigger(:press)
 end
 future_saved = GameRoomPreferences.normalize(future_saved, [])
-assert(future_saved["interface_language"] == "cs" && future_saved["known_languages"].sort == %w[cs pl],
+assert(future_saved["interface_language"] == "cs" && future_saved["known_languages"] == ["pl"],
   "a future language was not persisted by its stable code")
 assert(GameRoomLocalization.primary_language == "en", "choosing a future language changed the live interface")
 settings_dialog(future_saved) do |form|
   primary, known = form.fields[1..2]
-  assert(primary.index == czech_index && known.multiselections.sort == [czech_index, polish_index].sort,
+  assert(primary.index == czech_index && known.multiselections == [polish_index],
     "a future language was not restored when reopening settings")
   form.cancel_button.trigger(:press)
 end
@@ -234,11 +254,11 @@ GameRoomLocalization.boot(settings: { "interface_language" => "en" }, host_langu
     primary.index = language_index
     primary.trigger(:move)
     known.deselect_multiselection_indices([english_index, language_index])
-    assert(known.multiselections == [language_index], "a shipped primary language can be unchecked")
+    assert(known.multiselections.empty?, "a shipped primary language must not be forced into known languages")
     form.accept_button.trigger(:press)
   end
   shipped_saved = GameRoomPreferences.normalize(shipped_saved, [])
-  assert(shipped_saved["interface_language"] == code && shipped_saved["known_languages"] == [code],
+  assert(shipped_saved["interface_language"] == code && shipped_saved["known_languages"] == [],
     "a shipped language was not saved by its stable code")
   assert(GameRoomLocalization.primary_language == "en", "Save applied a shipped language before reload")
   GameRoomLocalization.boot(settings: shipped_saved, host_language: "en")
@@ -247,7 +267,7 @@ GameRoomLocalization.boot(settings: { "interface_language" => "en" }, host_langu
     assert(form.fields.first.header == { "cs" => "Nastavení", "es" => "Ajustes" }.fetch(code),
       "settings did not use the shipped language after reload")
     primary, known = form.fields[1..2]
-    assert(primary.index == language_index && known.multiselections == [language_index],
+    assert(primary.index == language_index && known.multiselections == [],
       "reopening settings lost the shipped language selections")
     form.cancel_button.trigger(:press)
   end
@@ -260,4 +280,4 @@ GameRoomLocalization.boot(settings: { "interface_language" => "en" }, host_langu
 end
 GameRoomLocalization.boot(settings: { "interface_language" => "en" }, host_language: "en")
 
-puts "PASS Game Room language settings: General category, native multiselection lock, staged Save/Cancel, normalization, help, Polish labels, future catalog and shipped Czech/Spanish Save/reload/fallback"
+puts "PASS Game Room language settings: independent empty-default known languages, staged Save/Cancel, normalization, help, Polish labels, future catalog and shipped Czech/Spanish Save/reload/fallback"

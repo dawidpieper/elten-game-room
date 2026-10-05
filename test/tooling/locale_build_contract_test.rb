@@ -50,6 +50,12 @@ Dir.mktmpdir('lc', scratch) do |directory|
   }
   app = "=begin Elten3AppInfo\n#{JSON.generate(metadata)}\n=end Elten3AppInfo\nclass LocaleContractFixture; end\n"
   File.binwrite(File.join(source, '__app.rb'), app)
+  readmes = (["README.md"] + GameRoomReleaseFiles::README_TRANSLATIONS).to_h do |path|
+    bytes = File.binread(File.join(root, path))
+    FileUtils.mkdir_p(File.dirname(File.join(source, path)))
+    File.binwrite(File.join(source, path), bytes)
+    [path, bytes]
+  end
   %w[eltenapp eltsetup].each do |format|
     builder = EltenTestHost.file("tools/build-#{format}.rb")
     target = File.join(directory, "fixture.#{format}")
@@ -61,8 +67,9 @@ Dir.mktmpdir('lc', scratch) do |directory|
       Zip::File.open(target) do |zip|
         payload = JSON.parse(zip.read('__manifest.json')).fetch('payload')
         assert_equal(languages, payload.fetch('supported_languages').sort)
-        assert_equal(['__manifest.json', payload.fetch('entry')].sort, zip.entries.map(&:name).sort,
+        assert_equal(['__manifest.json', payload.fetch('entry'), *readmes.keys].sort, zip.entries.map(&:name).sort,
           'Translation sources leaked into the installer')
+        readmes.each { |path, bytes| assert_equal(bytes, zip.read(path).b, "README bytes changed: #{path}") }
         package_path = File.join(directory, 'from-installer.eltenapp')
         File.binwrite(package_path, zip.read(payload.fetch('entry')))
       end

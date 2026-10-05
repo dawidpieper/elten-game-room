@@ -25,9 +25,14 @@ state.merge!(phase: :playing, current_player: 'Alice', revision: 1, turn: 1,
 replay = GameRoomGames::Replay.new(players: state[:players], current_player: 'Alice', state: state, history: [])
 now = 0.0
 clients, surfaces = {}, {}
+preferences, announcements = {}, Hash.new { |hash, key| hash[key] = [] }
 add = lambda do |name, work = PreviewImmediateWork.new|
-  program = Program.new
+  preferences[name] ||= {'scrabble_draft_speech' => false}
+  klass = Class.new(Program)
+  klass.define_singleton_method(:normalized_settings) { preferences.fetch(name) }
+  program = klass.new
   client = GameRoomScrabblePreview.new(program, game, transport: h.transports[name], clock: -> { now }, work: work)
+  client.define_singleton_method(:speak) { |text, **_| announcements[name] << text }
   client.bind_screen(session_id: h.session['__id'], table_id: h.table['__id'], owner: 'Alice', viewer: name, members: -> { h.users })
   client.start
   client.update_table_control('__control_epoch' => 1)
@@ -46,6 +51,10 @@ begin
   alice.handle_command('word_place', 'slot' => 0)
   pump.call
   assert(remote.call('Bob').first[:letter] == 'c' && remote.call('Watcher') == remote.call('Bob'), 'Other player/observer missed placed tile')
+  assert(announcements.values.all?(&:empty?), 'Preview speech is enabled by default')
+  preferences['Bob']['scrabble_draft_speech'] = true
+  pump.call
+  assert(announcements['Bob'].empty?, 'Enabling speech read an old draft')
   field = surfaces['Watcher'].fields.first
   field.set_logical_position(2, 4)
   alice.fields.first.set_logical_position(8, 7)
@@ -53,6 +62,8 @@ begin
   alice.handle_command('word_place', 'slot' => 3)
   pump.call
   assert(remote.call('Watcher').last.values_at(:letter, :blank, :points) == ['a', true, 0], 'Blank leaked/lost its chosen face')
+  assert(announcements['Bob'] == ['Alice places A on I8.'], 'Placed blank was not announced once with its face/field')
+  assert(announcements['Watcher'].empty? && announcements['Alice'].empty?, 'A local preference affected another viewer/author')
   assert(field.logical_position == [2, 4], 'Remote preview moved cursor')
   packets = h.users.flat_map { |user| h.view(user).sent_messages.to_a }
   assert(packets.all? { |p| p['payload']['tiles'].to_a.all? { |t| t.size == 3 && t[0].is_a?(Integer) && t[1].is_a?(String) && [true, false].include?(t[2]) } }, 'Payload includes more than public faces')
@@ -65,17 +76,22 @@ begin
   alice.handle_command('word_cancel')
   pump.call
   assert(remote.call('Watcher').empty?, 'Cancel left remote tiles')
+  assert(announcements['Bob'].last(2) == ['Alice removes C from H8.', 'Alice removes A from I8.'], 'Removed draft tiles were not announced')
+  announced = announcements['Bob'].dup
   sender = h.core.participants.fetch('alice')
   3.times { h.view('Watcher').deliver_message(sender, old, NativeLiveSessionsBroker::MessageInfo.new) }
   pump.call
   assert(remote.call('Watcher').empty?, 'Old/repeated sketch returned after cancellation')
+  assert(announcements['Bob'] == announced, 'Repeated/stale packet repeated speech')
   alice.fields.first.set_logical_position(7, 7)
   alice.handle_command('word_place', 'slot' => 0)
   pump.call
   clients['Watcher'].close
+  preferences['Watcher']['scrabble_draft_speech'] = true
   add.call('Watcher')
   pump.call
   assert(remote.call('Watcher').size == 1, 'Rejoining observer failed to request current sketch')
+  assert(announcements['Watcher'].empty?, 'Rejoining observer received historical draft speech')
   bad = Marshal.load(Marshal.dump(h.view('Alice').sent_messages.last))
   bad['payload']['sequence'] += 10
   bad['payload']['tiles'] = [[113, 'z', false]]
@@ -87,11 +103,13 @@ begin
   pump.call
   assert(remote.call('Watcher').first[:letter] == 'c', 'Malformed field overwrote sketch')
   previous_stream = h.view('Alice').sent_messages.last
+  previous_announcements = announcements['Bob'].dup
   clients['Alice'].close
   add.call('Alice')
   surfaces['Alice'].handle_command('word_place', 'slot' => 1)
   pump.call(8)
   assert(remote.call('Watcher').first[:letter] == 'a', 'Restarted author did not complete fresh snapshot handshake')
+  assert(announcements['Bob'] == previous_announcements, 'A fresh snapshot was announced as edits')
   h.view('Watcher').deliver_message(sender, previous_stream, NativeLiveSessionsBroker::MessageInfo.new)
   pump.call(8)
   assert(remote.call('Watcher').first[:letter] == 'a', 'Retired author stream replaced current sketch')
@@ -106,10 +124,12 @@ begin
   # replay revision/control scope; no preview may cross that boundary.
   state[:revision] += 1
   state[:current_player] = 'Bob'
+  previous_announcements = announcements.transform_values(&:dup)
   clients.each { |name, client| client.before_wait(replay, name); surfaces[name].update_spec(game.surface_spec(replay, name)) }
   h.view('Watcher').deliver_message(sender, old, NativeLiveSessionsBroker::MessageInfo.new)
   pump.call
   assert(remote.call('Watcher').empty?, 'Previous turn returned')
+  assert(announcements == previous_announcements, 'A turn/commit boundary announced fake removals')
   clients.each_value { |c| c.update_table_control('__control_epoch' => 2); c.before_wait(replay, 'Alice') }
   pump.call
   assert(remote.call('Watcher').empty?, 'Previous controller returned')

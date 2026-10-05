@@ -30,10 +30,10 @@ assert(selected.grep(/\.rb\z/).length >= 187, "Runtime sources omitted")
 end
 assert(!selected.include?("Audio/krowa-word-tower.mp3"), "Original music duplicated in release")
 %w[content/scrabble_words_pl_data.rb games/krowa_support/noun_data.rb locale/PL.mo
-   LICENSE content/QUIZ_DATA_NOTICE.md content/QUIZ_PL_SPORT_SOURCES.txt].each do |file|
+   README.md LICENSE content/QUIZ_DATA_NOTICE.md content/QUIZ_PL_GENERAL_SOURCES.txt].each do |file|
   assert(selected.include?(file), "Required content omitted: #{file}")
 end
-%w[AGENTS.md CHANGELOG.md README.md CONTRIBUTING.md content/QUIZ_IMPORT_REPORT.json
+%w[AGENTS.md CHANGELOG.md CONTRIBUTING.md content/QUIZ_IMPORT_REPORT.json
    content/taboo_editorial.txt test/anything.rb tools/anything.rb tools/data/rulebooks/uno.json
    .git/config lib/.secret.rb Audio/original.opus.bak locale/authoring.json
    locale/PL.po locale/CS.po locale/game-room.pot tools/plural_forms.json].each do |file|
@@ -53,6 +53,8 @@ Dir.mktmpdir("gr-release-test-") do |directory|
   end
   %w[Audio lib test tools docs].each { |path| FileUtils.mkdir_p(File.join(source, path)) }
   fixture_audio = "OggS\x00\xFFOpusHeadfixture".b
+  fixture_readme = File.binread(File.join(repo, "README.md"))
+  File.binwrite(File.join(source, "README.md"), fixture_readme)
   File.binwrite(File.join(source, "Audio/test.opus"), fixture_audio)
   File.write(File.join(source, "lib/extra.rb"), "# runtime\n")
   File.write(File.join(source, "__app.rb"), "require_relative 'lib/extra'\n")
@@ -62,6 +64,10 @@ Dir.mktmpdir("gr-release-test-") do |directory|
   assert(paths.include?("lib/extra.rb"), "Relative runtime dependency missing")
   assert(!File.exist?(File.join(destination, "test")), "Test folder distributed")
   assert(File.binread(File.join(destination, "Audio/test.opus")) == fixture_audio, "Binary resource changed")
+  assert(File.binread(File.join(destination, "README.md")) == fixture_readme, "User-edited README changed")
+  File.delete(File.join(source, "README.md"))
+  must_reject("Missing runtime README ignored") { GameRoomReleaseFiles.files(source) }
+  File.binwrite(File.join(source, "README.md"), fixture_readme)
   must_reject("Stage overwrote an existing directory") { GameRoomReleaseFiles.stage(source, destination) }
   must_reject("Stage allowed a directory inside source") { GameRoomReleaseFiles.stage(source, File.join(source, "release")) }
   File.write(File.join(source, "__app.rb"), "require_relative 'test/private'\n")

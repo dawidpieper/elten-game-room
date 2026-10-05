@@ -29,6 +29,8 @@ module GameRoomPreferences
     {
       "background_table_speech" => true,
       "background_turn_sound" => true,
+      "background_game_sounds" => "never",
+      "scrabble_draft_speech" => false,
       "announce_lobby_changes" => true,
       "announce_table_created" => true,
       "announce_player_joined" => true,
@@ -80,6 +82,8 @@ module GameRoomPreferences
       source, allowed_games, "widget_games", "widget_known_games", LEGACY_WIDGET_GAME_IDS
     )
     result["invitation_notifications"] = normalized_invitation_policy(result["invitation_notifications"])
+    result["background_game_sounds"] = %w[all audio never].include?(source["background_game_sounds"]) ? source["background_game_sounds"] : "never"
+    result["scrabble_draft_speech"] = source["scrabble_draft_speech"] == true
     %w[widget_contacts_only table_watch_contacts_only].each { |key| result[key] = source[key] == true }
     %w[
       background_table_speech

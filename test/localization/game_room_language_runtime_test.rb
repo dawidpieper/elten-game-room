@@ -76,9 +76,9 @@ def verify_real_ui(runtime, language)
   assert_equal([Encoding::ASCII_8BIT], runtime.source_encodings.uniq, "Sources bypassed the binary runtime boundary")
   assert_equal(["settings.json"], runtime.settings_reads, "Saved language was not read once before constants were built")
   expected_menu = if language == "pl"
-    ["Utwórz nowy stół", "Dołącz do stołu", "Zasady gry", "Zaproszenia", "Zapisane gry", "Rankingi", "Statystyki", "Ustawienia", "Co nowego"]
+    ["Utwórz nowy stół", "Dołącz do stołu", "Zasady gry", "Zaproszenia", "Zapisane gry", "Rankingi", "Statystyki", "Ustawienia", "README", "Co nowego"]
   else
-    ["Create a new table", "Join a table", "Game rules", "Invitations", "Saved games", "Leaderboards", "Statistics", "Settings", "What's new"]
+    ["Create a new table", "Join a table", "Game rules", "Invitations", "Saved games", "Leaderboards", "Statistics", "Settings", "README", "What's new"]
   end
   assert_equal(expected_menu, app::MAIN_OPTIONS, "Host locale overrode the actual MAIN_OPTIONS constant")
   chess = app::GAME_REGISTRY.build("chess")
@@ -114,8 +114,8 @@ def verify_real_ui(runtime, language)
   worker = Object.new
   def worker.closed?; false; end
   widget = ns::GameRoomWidget::TableList.new(loader: -> { [] }, opener: ->(_) {}, labeler: ->(_) { "" }, id_for: ->(_) { 0 }, worker: worker)
-  assert_equal(language == "pl" ? "Stoły Game Roomu" : "Game Room tables", widget.header, "Widget label required a current runtime")
-  assert_equal(language == "pl" ? "Wczytywanie stołów Game Roomu" : "Loading Game Room tables", widget.empty_label, "Widget loading label required a current runtime")
+  assert_equal(language == "pl" ? "Stoły Power Games" : "Power Games tables", widget.header, "Widget label required a current runtime")
+  assert_equal(language == "pl" ? "Wczytywanie stołów Power Games" : "Loading Power Games tables", widget.empty_label, "Widget loading label required a current runtime")
 
   form = ns::GameRoomUI::Form.new([ListBox.new(["a"], header: "field")], quiet: true)
   callback = form.game_room_hotkey_action(1)

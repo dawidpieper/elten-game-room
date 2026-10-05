@@ -42,15 +42,32 @@ assert((games.keys & books.keys).empty? && (games.keys + books.keys).sort == all
 assert(all == games.merge(books), 'Witcher question content differs between full and detailed sets')
 assert(media.fetch('source_question_count') == all.size && media.fetch('media').keys.sort == all.keys.sort, 'Stale medium map')
 assert(media.fetch('prompts').empty?, 'Do not maintain conflicting wording overlays')
-# Regression cases: a named relationship, conditional game outcome, source
-# medium, non-drug therapy, historical origin and an unsupported claim.
 general = data.fetch('quiz.wikidata.pl')
-assert(general.values.none? { |q| q['prompt'].include?('obywatelstwo przypisano') }, 'Vague citizenship template remains')
+expected_categories = ['Geografia', 'Historia', 'Kultura', 'Literatura', 'Nauka',
+  'Przyroda', 'Religia', 'Sport', 'Język', 'Społeczeństwo', 'Życie codzienne']
+assert(general.values.map { |q| q.fetch('category') }.uniq.sort == expected_categories.sort, 'Polish general categories differ from the reviewed set')
+source_prefixes = {'PolQA' => 'polqa_', '1z10/MAUPQA' => '1z10_', 'Milionerzy/Polsat' => 'milionerzy_'}
+assert(general.values.map { |q| q.fetch('source_dataset') }.uniq.sort == source_prefixes.keys.sort, 'Polish general source datasets are incomplete')
+general.each do |id, question|
+  prefix = source_prefixes.fetch(question.fetch('source_dataset'))
+  assert(id.start_with?(prefix), "#{id}: source identity was regenerated or the retired data returned")
+  assert(id.length.between?(1, 32) && !id.match?(/[,\r\n]/), "#{id}: question ID cannot travel in a Quiz event")
+  assert(!question.fetch('source').strip.empty? && !question.fetch('source_license').strip.empty?, "#{id}: missing source attribution or rights")
+  [question.fetch('prompt'), question.fetch('correct'), *question.fetch('wrong')].each do |text|
+    assert(text.encoding == Encoding::UTF_8 && text.valid_encoding?, "#{id}: invalid Polish question encoding")
+    assert(!text.match?(/[\r\n]/), "#{id}: multiline text breaks the numbered review export")
+  end
+end
+# 1z10 source decisions 13594 and 16571: the original listed alternatives
+# permit more than one answer; neither prompt may return with a new ID.
+{
+  '1z10_41736dcea8105d68' => 'Bostońska herbatka poprzedziła rewolucję francuską, amerykańską czy angielską?',
+  '1z10_8e8ea94b029b7e6c' => 'Do stworzenia akwaforty używa się pędzla, stalowej igły czy dłuta?'
+}.each do |id, prompt|
+  assert(!general.key?(id) && general.values.none? { |q| q.fetch('prompt') == prompt }, "Ambiguous reviewed question returned: #{id}")
+end
+# Witcher regressions remain independent of the replaced general question set.
 assert(all.values.none? { |q| q['prompt'].match?(/z którą.*powiązana ta postać/) }, 'Vague relationship template remains')
-assert(general['f5716d4f4e58']['prompt'].include?('pochodził James Watt'), 'Origin confused with citizenship')
-assert(general['a707edc4e80a']['prompt'].include?('poznawczo-behawioraln') && !general['a707edc4e80a']['prompt'].start_with?('Lek '), 'Therapy called a drug')
-assert(!general.key?('09559cfc46fe'), 'False medical premise returned')
-assert(general['97ad565f0400']['prompt'].include?('Teogonii'), 'Myth tradition left ambiguous')
 assert(books['6954116f2096'] == nil && games['6954116f2096']['prompt'].include?('Krew i Wino'), 'Adela Marta confused with the story The Bounds of Reason')
 assert(books['50798ae287af']['prompt'].include?('serialu Netflixa'), 'Actor still in game-only set')
 assert(games.values.any? { |q| q['correct'] == 'Lambert' && q['prompt'].include?('Keira Metz może') }, 'Conditional romance presented as certain')

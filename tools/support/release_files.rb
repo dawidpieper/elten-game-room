@@ -5,14 +5,15 @@ require "pathname"
 require "digest"
 
 module GameRoomReleaseFiles
-  ROOT_FILES = %w[__app.rb manifest.json LICENSE THIRD_PARTY_NOTICES.md].freeze
+  ROOT_FILES = %w[__app.rb manifest.json README.md LICENSE THIRD_PARTY_NOTICES.md].freeze
+  README_TRANSLATIONS = %w[EN CS ES RU].map { |language| "content/readme/#{language}.md" }.freeze
   AUDIO_EXTENSIONS = %w[.ogg .opus .wav .wave .mp3 .flac .aac .m4a .wma .spx .webm].freeze
-  REQUIRED_FILES = (ROOT_FILES + %w[locale/PL.mo LICENSES/RUBY.txt LICENSES/RUBY-BSDL.txt
+  REQUIRED_FILES = (ROOT_FILES + README_TRANSLATIONS + %w[locale/PL.mo LICENSES/RUBY.txt LICENSES/RUBY-BSDL.txt
     lib/vendor/unicode_normalize/normalize.rb lib/vendor/unicode_normalize/tables.rb]).freeze
 
   def self.allowed?(relative)
     return false if relative.split("/").any? { |part| part.start_with?(".") }
-    ROOT_FILES.include?(relative) ||
+    ROOT_FILES.include?(relative) || README_TRANSLATIONS.include?(relative) ||
       relative.match?(%r{\A(?:games|lib|content)/.+\.rb\z}) ||
       (relative.start_with?("Audio/") && AUDIO_EXTENSIONS.include?(File.extname(relative).downcase)) ||
       relative.match?(%r{\Alocale/[A-Za-z]{2}\.mo\z}) ||

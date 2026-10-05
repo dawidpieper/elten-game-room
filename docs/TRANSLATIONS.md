@@ -58,6 +58,21 @@ that copies the current translation into its own expected result.
 
 ## Adding a language
 
+The user guide is maintained separately from Gettext: Polish in `README.md`,
+English, Czech, Spanish and Russian in `content/readme/<LANG>.md`.
+The README item in the main menu selects the interface language through
+`GameRoomReadmeView.path`; it does not use the optional known-language list.
+When a feature, shortcut or menu path changes, update the affected sections
+in every language together. Preserve the author's edits and removals.
+
+Every new interface language also needs a complete README translation,
+an entry in `GameRoomReadmeView::FILES`, and an explicit release-file entry
+in `GameRoomReleaseFiles::README_TRANSLATIONS`. Run `test/ui/readme_test.rb`
+and `test/tooling/locale_build_contract_test.rb` to check language coverage,
+native headings and contents links, and exact document bytes in the installer.
+Keep the Markdown structure and working links; do not flatten the guide or
+copy its text into Ruby. A fallback language does not count as a translation.
+
 ```console
 ruby tools/translations.rb new DE --name "Deutsch"
 ruby tools/translations.rb compile DE

@@ -15,10 +15,16 @@ module GameRoomGames
     POINTS_TO_WIN = 7
     SET_BREAK = 5
 
-    def notification_option_keys(_options); %w[difficulty]; end
+    def notification_option_keys(_options); %w[difficulty sets_to_win]; end
+    def notification_variant(options)
+      count = options['sets_to_win']
+      sets = n_('first to %{count} set', 'first to %{count} sets', count) % {count: count} if count.is_a?(Integer) && count.between?(1, 3)
+      [notification_choice(options, 'difficulty'), sets].compact.join(', ')
+    end
 
     def id; 'audio_ball'; end
     def name; _('Audio Ball'); end
+    def audio_game?; true; end
     def supports_bots?; true; end
     def supports_bot_move_delay?; false; end
     # The session runner persists agreed points, never advances ball physics.
@@ -124,7 +130,7 @@ module GameRoomGames
           end
         end
       end
-      state[:server] = (state[:first_server] + state[:rally] / 2) % 2 unless state[:first_server] == nil
+      state[:server] = (state[:first_server] + state[:set_number] - 1 + state[:scores].sum / 2) % 2 unless state[:first_server] == nil
       state[:owner] = session['__table_owner'] || owner
       Replay.new(board: nil, players: players, current_player: nil, winner: winner, draw: false,
         accepted_events: accepted, history: history, state: state)

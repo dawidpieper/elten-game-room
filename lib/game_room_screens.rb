@@ -1,5 +1,7 @@
 require_relative "context_help"
 require_relative "game_room_ui"
+require_relative "game_rules_view"
+require_relative "readme_view"
 require_relative "game_room_localization"
 require_relative "axel_pong/settings"
 require_relative "table_presets"
@@ -64,6 +66,22 @@ module GameRoomScreens
       form.accept_button = close_button
       form.cancel_button = close_button
       form.hide(close_button)
+      close_button.on(:press) { form.resume }
+      form.wait
+    end
+  end
+
+  class Readme
+    def initialize(text, program: nil)
+      @program = program
+      @text = text
+    end
+
+    def wait
+      document = GameRoomReadmeView.new(_("README"), text: @text)
+      close_button = Button.new(GameRoomContent.utf8(_("Close")))
+      form = GameRoomUI::Form.new([document, close_button], program: @program, quiet: true)
+      form.cancel_button = close_button
       close_button.on(:press) { form.resume }
       form.wait
     end
@@ -311,6 +329,9 @@ module GameRoomScreens
         checked: setting_enabled?("background_table_speech"))
       background_turn = CheckBox.new(GameRoomContent.utf8(_("Play a sound for my turn outside the table window")),
         checked: setting_enabled?("background_turn_sound"))
+      background_sounds = ListBox.new([_("All games"), _("Audio games only"), _("Do not mute")].map { |text| GameRoomContent.utf8(text) },
+        header: GameRoomContent.utf8(_("Mute game sounds when switching to another window")), quiet: true,
+        index: %w[all audio never].index(@values["background_game_sounds"]) || 2)
       languages = GameRoomLocalization.available_languages
       language_values = GameRoomLocalization.normalize_settings(@values)
       language_labels = languages.map { |language| GameRoomContent.utf8(language.fetch(:label)) }
@@ -322,8 +343,6 @@ module GameRoomScreens
       known_languages.select_multiselection_indices(languages.each_index.select do |index|
         language_values["known_languages"].include?(languages[index].fetch(:id))
       end)
-      known_languages.require_multiselection_indices([primary_language.index])
-      primary_language.on(:move) { known_languages.require_multiselection_indices([primary_language.index]) }
       [primary_language, known_languages].each do |control|
         control.add_tip(GameRoomContent.utf8(_("Missing translations use other known languages, then English. Restart ELTEN to apply language changes.")))
       end
@@ -331,7 +350,7 @@ module GameRoomScreens
         writer: @preset_writer) if @preset_editor && @preset_writer
 
       groups = [
-        [primary_language, known_languages, background_speech, background_turn],
+        [primary_language, known_languages, background_speech, background_turn, background_sounds],
         [lobby_games, created, joined, left, computers],
         [invitation_policy, watched_games, watched_contacts],
         volume_fields.values,
@@ -400,6 +419,7 @@ module GameRoomScreens
         "interface_language" => languages.fetch(primary_language.index).fetch(:id),
         "background_table_speech" => background_speech.checked,
         "background_turn_sound" => background_turn.checked,
+        "background_game_sounds" => %w[all audio never].fetch(background_sounds.index, "never"),
         "known_languages" => known_languages.multiselections.map { |index| languages.fetch(index).fetch(:id) },
         "lobby_games" => selected_game_ids(lobby_games),
         "lobby_known_games" => GameRoomPreferences.normalized_game_ids(
@@ -608,11 +628,7 @@ module GameRoomScreens
       content = if shortcuts
         ListBox.new(section.paragraphs, header: header, quiet: true)
       else
-        EditBox.new(header,
-          type: EditBox::Flags::ReadOnly | EditBox::Flags::MultiLine,
-          text: section.text,
-          quiet: true
-        )
+        GameRoomRules::View.new(header, document: section)
       end
       back_button = Button.new(_("Back"))
       form = GameRoomUI::Form.new([content, back_button], program: @program, quiet: true)

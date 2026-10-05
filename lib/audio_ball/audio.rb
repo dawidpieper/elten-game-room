@@ -62,8 +62,8 @@ module GameRoomAudioBall
         sound = @sounds[@cue_name]
         if sound && sound.playing?
           sound.pan = listening_pan((@cue_side == 0 ? 1.0 : -1.0) * (viewer == 1 ? -1 : 1))
-          sound.volume = gain(@cue_name)
-          sound.pause unless sound.volume > 0
+          GameRoomSoundOutput.apply(@program, sound, gain(@cue_name))
+          sound.pause unless gain(@cue_name) > 0
         end
         return
       end
@@ -77,8 +77,8 @@ module GameRoomAudioBall
         @flight = flight
       end
       sound.pan = listening_pan((snapshot['position'].to_f / 25.0 * 2.0 - 1.0) * (viewer == 1 ? -1 : 1))
-      sound.volume = gain(name)
-      if sound.volume > 0
+      GameRoomSoundOutput.apply(@program, sound, gain(name), continuous: true)
+      if gain(name) > 0
         sound.play unless sound.playing?
       else
         sound.pause if sound.playing?
@@ -199,8 +199,8 @@ module GameRoomAudioBall
       sound = @sounds[@cue_name]
       return unless sound
       sound.pan = listening_pan((side == 0 ? 1.0 : -1.0) * (viewer == 1 ? -1 : 1))
-      sound.volume = gain(@cue_name)
-      return unless sound.volume > 0
+      GameRoomSoundOutput.apply(@program, sound, gain(@cue_name), restart: true)
+      return unless gain(@cue_name) > 0
       sound.position = 0
       sound.play
     end

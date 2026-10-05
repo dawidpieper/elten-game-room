@@ -566,7 +566,7 @@ module GameRoomAudioBall
         presentation_state.announced_set = number
         @audio.announce_set(number)
       end
-      service = [number, @replay.state[:rally] / 2]
+      service = [number, @replay.state[:scores].sum / 2]
       return if @announced_service == service
       @announced_service = service
       player = GameRoomParticipants.display_name(@players[@replay.state[:server]])

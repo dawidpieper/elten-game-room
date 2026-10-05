@@ -3,8 +3,8 @@
   "id": "c24d98cc-9ccd-4d50-b801-459da324ff60",
   "name": "Power Games",
   "description": "Accessible multiplayer games for ELTEN users.",
-  "version": "2.0.4.3",
-  "build_id": "242",
+  "version": "2.0.4.4",
+  "build_id": "243",
   "EltenAPIVersion": "3.0.4",
   "main_language": "en",
   "supported_languages": ["en", "pl", "cs", "es", "ru"],
@@ -111,6 +111,7 @@ require_relative "lib/game_room_presence_screen"
 require_relative "lib/game_room_analytics_runtime"
 require_relative "lib/game_statistics_screen"
 require_relative "lib/table_activity_repository"
+require_relative "lib/table_history_exporter"
 require_relative "lib/game_rules"
 require_relative "lib/game_room_changelog"
 require_relative "lib/game_room_screens"
@@ -160,8 +161,8 @@ class EltenGameRoom < Program
   extend GameRoomTableWatchRuntime
   extend GameRoomContactFiltersRuntime
   extend GameRoomAnalyticsRuntime
-  GAME_ROOM_VERSION = "2.0.4.3".freeze
-  GAME_ROOM_BUILD_ID = 242
+  GAME_ROOM_VERSION = "2.0.4.4".freeze
+  GAME_ROOM_BUILD_ID = 243
   GAME_ROOM_CAPABILITIES = ["invitations", "live_sessions", "live_session_stack"].freeze
   LOBBY_ACTIVITY_POLL_INTERVAL = 5.0
 
@@ -206,6 +207,7 @@ class EltenGameRoom < Program
     _("Leaderboards"),
     _("Statistics"),
     _("Settings"),
+    _("README"),
     _("What's new")
   ].freeze
 
@@ -700,6 +702,8 @@ class EltenGameRoom < Program
     when 7
       show_settings
     when 8
+      show_readme
+    when 9
       show_changelog
     end
   end
@@ -801,6 +805,20 @@ class EltenGameRoom < Program
 
     show_changelog_entries(entries)
     remember_changelog_build
+  end
+
+  def show_readme
+    begin
+      relative = GameRoomReadmeView.path
+      path = asset_path(relative)
+      raise Errno::ENOENT, relative if path == nil
+      text = File.binread(path)
+    rescue SystemCallError, IOError => error
+      Log.warning("Power Games README could not be read: #{error.class}: #{error.message}") if defined?(Log)
+      alert(_("Could not open the README."))
+      return
+    end
+    GameRoomScreens::Readme.new(text, program: self).wait
   end
 
   def show_changelog
@@ -928,6 +946,23 @@ class EltenGameRoom < Program
   rescue ArgumentError, IOError, SystemCallError => error
     Log.warning("ELTEN Game Room save failed: #{error.class}") if defined?(Log)
     alert(_("The game could not be saved. The table was not closed by this operation."))
+    false
+  end
+
+  def save_table_history(entries)
+    directory = get_file(
+      _("Save table history"),
+      path: EltenPath.with_separator(Dirs.documents),
+      save: true
+    )
+    return false if directory == nil
+
+    path = GameRoomTableHistoryExporter.new.write(EltenPath.normalize(directory), entries)
+    alert(_("The table history has been saved to %{path}.") % { path: path })
+    true
+  rescue ArgumentError, EncodingError, IOError, SystemCallError => error
+    Log.warning("ELTEN Game Room table history save failed: #{error.class}: #{error.message}") if defined?(Log)
+    alert(_("The table history could not be saved."))
     false
   end
 
@@ -1434,7 +1469,7 @@ class EltenGameRoom < Program
         end
       end
       GameRoomParticipantMenu.bind(layout, available: -> do
-        [:invite_online, :invite_contacts, :rules, :leave] +
+        [:invite_online, :invite_contacts, :rules, :save_table_history, :leave] +
           GameRoomParticipantMenu.role_actions(room: snapshot, viewer: Session.name, owner: owner) +
           (editable_table_state?(state) && state.game.team_assignment(state.game.options_from_json(row["game_options"]), players: snapshot.game_participants) ? [:edit_teams] : []) +
           GameRoomParticipantMenu.lifecycle_actions(active: state.active?, viewer: Session.name, owner: owner,
@@ -1498,6 +1533,9 @@ class EltenGameRoom < Program
         quiet_reentry = true
       when :rules
         show_game_rules(state.game, options: state.game&.options_from_json(row["game_options"]))
+      when :save_table_history
+        save_table_history(room_history_entries(state, state.activity_entries))
+        quiet_reentry = true
       when :invite_online
         show_invite_users(row, source: :online)
       when :invite_contacts
@@ -2173,6 +2211,12 @@ class EltenGameRoom < Program
     client&.close
   end
 
+  def toggle_scrabble_draft_speech
+    enabled = game_room_settings['scrabble_draft_speech'] != true
+    update_game_room_settings { |settings| settings['scrabble_draft_speech'] = enabled }
+    speak(enabled ? _("Announcements of placed and removed letters enabled.") : _("Announcements of placed and removed letters disabled."))
+  end
+
   def show_pong_settings(tick: nil, clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
     # The fast entry point is deliberately local: no notification preferences,
     # contacts, or table requests are loaded while opening or saving this panel.
@@ -2553,11 +2597,14 @@ class EltenGameRoom < Program
   end
 
   def table_join_label(snapshot)
-    GameRoomContent.utf8(_("%{owner}, %{count}/%{maximum}, %{status}")) % {
+    label = GameRoomContent.utf8(_("%{owner}, %{count}/%{maximum}, %{status}")) % {
       owner: GameRoomContent.utf8(GameRoomParticipants.display_name(@lobby.owner_of(snapshot.table))),
       count: snapshot.participant_count, maximum: @lobby.capacity_of(snapshot.table),
       status: table_status_label(snapshot.table)
     }
+    game = game_definition(snapshot.table["game"])
+    variant = GameRoomTableVariant.text(game, GameRoomTableVariant.payload(game, snapshot.table["game_options"]))
+    variant.empty? ? label : "#{label}, #{variant}"
   end
 
   def table_header(snapshot)
@@ -2977,6 +3024,7 @@ class EltenGameRoom < Program
       manage_computer: ->(current_table, action, participant) { change_room_computer(current_table, action, participant) },
       manage_observer: ->(current_table, action, participant = nil) { change_observer_mode(current_table, action, participant) },
       manage_teams: ->(current_table) { change_table_teams(current_table) },
+      save_table_history: ->(entries) { save_table_history(entries) },
       edit_options: ->(current_table) { change_table_game_options(current_table) },
       abort_game: ->(current_table, current_session) { abort_current_game(current_table, current_session) },
       leave_table: ->(current_table) { leave_table_from_screen(current_table) },

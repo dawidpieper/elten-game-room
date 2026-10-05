@@ -202,12 +202,12 @@ module GameRoomGames
       "spades"
     end
 
-    def notification_option_keys(_options); %w[no_hell quicksand suicide]; end
+    def notification_option_keys(_options); %w[no_hell quicksand suicide score_limit]; end
     def notification_variant(options)
       names = {"no_hell" => _("No hell"), "quicksand" => _("Quicksand"), "suicide" => _("Suicide")}
       selected = names.filter_map { |key, label| label if options[key] == true }
       selected << _("Standard") if selected.empty? && names.keys.all? { |key| options[key] == false }
-      selected.join(", ")
+      (selected + [notification_points(options, "score_limit")]).compact.join(", ")
     end
 
     def name

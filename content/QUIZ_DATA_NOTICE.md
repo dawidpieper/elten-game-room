@@ -24,7 +24,25 @@ ELTEN Game Room and released under CC0-1.0. It does not translate or derive
 questions from the English or Polish imports. The source intentionally writes
 the letter «ё» wherever standard Russian spelling requires it.
 
-## Polish imports
+## Current Polish general knowledge
+
+From data version 7 (Power Games 2.0.4.4, build 243), the Polish general
+knowledge set is a new combined adaptation of PolQA, MAUPQA's 1z10 and
+Milionerzy questions. It replaces, rather than extends, the former Wikidata
+question database. The identifiers `quiz.wikidata.pl` and `quiz.wikidata`
+are retained only for the existing set selection; they no longer describe
+the source or its license. See `QUIZ_PL_GENERAL_SOURCES.txt` for attribution,
+fixed source revisions, editorial changes and the separate rights of each
+portion. In particular, this new set must not be labelled CC0.
+
+Data version 8 makes approved minimal wording edits to 410 questions whose
+embedded answer lists gave away which fourth option to reject. Factual clues
+and the source style are retained; grammatical answer forms and a small number
+of dependent choices are adjusted where necessary. No question is added or
+removed: all 14,887 IDs, categories, source records and their order remain.
+This is a focused wording review, not a new factual audit of the entire set.
+
+## Earlier Polish imports and current Witcher sets
 
 The PR declares the Wikidata pack as CC0-1.0, credited to “ELTEN Game Room”,
 and the Witcher pack as “CC BY-SA 3.0 (Fandom, Wiedźmin Wiki)”, also credited
@@ -93,20 +111,26 @@ were first packaged in version 1.1.8, build 220.
 After build 221 had been signed, all 20,730 removals were reconsidered in a
 separate conservative recovery audit. It restored only questions for which the
 exact fact, the full answer set and (for Witcher questions) the assigned medium
-could be confirmed. The current source sets therefore contain 13,903 English
+could be confirmed. The source sets at that stage therefore contained 13,903 English
 general questions, 11,088 Polish general questions and 5,137 Witcher questions.
 The Witcher views contain 2,670 game questions and 2,467 book/screen questions.
 The complete second-pass ledger is stored in
 `diagnostics/quiz-recovery-audit-after-221`. These data are newer than the
 already signed build 221 package and are not contained in that package.
 
-## Rebuilding these files
+## Rebuilding the historical imports
 
 Use a checkout of the exact revision above, then run from the Game Room root:
 
 ```text
 ruby tools/import-reviewed-quiz-packs.rb PATH_TO_REVIEWED_CHECKOUT content
 ```
+
+This command describes the historical import, not the replacement Polish
+general set in data version 7. Running it on a current checkout would overwrite
+that new set. Its data should instead be maintained through the generated
+`quiz_pl_wikidata_data.rb` resource and `QuizPackWriter`, with a fresh checksum
+and regenerated readable lists after edits.
 
 Only the pinned data hashes are accepted (LF/CRLF checkouts are supported).
 The importer writes small registration files, lazy Ruby data resources and

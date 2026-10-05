@@ -35,6 +35,12 @@ module GameRoomGames
         nil
       end
 
+      def notification_points(options, key)
+        count = options[key]
+        return nil unless count.is_a?(Integer) && count.positive?
+        n_("%{count} point", "%{count} points", count) % {count: count}
+      end
+
       # Local view persistence is declared by its game and never serialized
       # into table options, actions, subscriptions or a saved game.
       def board_preference_definitions

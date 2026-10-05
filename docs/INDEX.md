@@ -1,5 +1,10 @@
 # Dokumentacja
 
+## Dla graczy
+
+- [Power Games — przewodnik po programie](../README.md): pierwsze kroki,
+  stoły, zaproszenia, widget, ustawienia, zapis partii i najważniejsze skróty.
+
 ## Planowane poprawki
 
 - [Nowy plan poprawek Game Roomu](NEXT_FIXES_PLAN.md):

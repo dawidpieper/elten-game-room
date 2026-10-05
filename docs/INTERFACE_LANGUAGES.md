@@ -1,8 +1,8 @@
 # Independent interface languages
 
-Game Room settings include a Language category after Axel Pong. Its fields are
-Primary interface language, then Known languages (native multi-selection).
-The primary language is always selected in Known languages. Language changes are
+Game Room settings include Primary interface language, then Known languages
+(native multi-selection), at the start of the General category.
+Known languages are optional and independent of the primary language. Language changes are
 staged with the other settings: Save writes them, Cancel discards them. Restart
 ELTEN to apply them to the entire program, including menus and the main-screen
 widget. Merely closing the Game Room window does not reload its translated data.
@@ -14,8 +14,9 @@ The local `settings.json` stores language codes, not names or list indices:
 ```
 
 For a new configuration, the primary language follows ELTEN when that language is
-available in Game Room, otherwise English. Known-language defaults use the
-already loaded `Session.languages` when available. There is no profile request or
+available in Game Room, otherwise English. Known languages start empty; they
+are not imported from the account or selected when the primary language changes.
+Existing explicit selections are preserved. There is no profile request or
 write. Saving makes the choices explicit; subsequent ELTEN language/profile
 changes do not overwrite them.
 
@@ -29,6 +30,10 @@ is complete source text, not a missing EN.mo catalog: selecting English as prima
 always yields English.
 Context and plural forms follow the same chain, using each catalog's plural rule.
 An empty or unavailable translation is a miss, not a reason to hide the message.
+Cat, head, tail explicitly allows a common-message fallback within each language:
+its own context first, then the common entry, before trying another language.
+Other contextual lookups stay isolated unless they explicitly opt in. The game
+title itself remains Cat, head, tail in every interface language.
 
 `GameRoomLocalization` reads the settings and MO catalogs at startup. It never
 changes `Configuration.language`, the account profile, or the host dictionary.

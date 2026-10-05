@@ -5,6 +5,7 @@ require_relative 'realtime/progress'
 # A transient, public sketch, not a game move. Only placed letter faces leave
 # the UI. The authoritative board/score/rack always comes from normal replay.
 class GameRoomScrabblePreview
+  using GameRoomLocalization::Translations
   INTERVAL = 0.12
 
   def initialize(program, game, transport:, clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }, work: nil)
@@ -76,6 +77,7 @@ class GameRoomScrabblePreview
   end
 
   def action(_selection, _replay, _viewer); false; end
+  def show_settings; @program.__send__(:toggle_scrabble_draft_speech); end
   def context_data; {}; end
   # Preview tiles update the existing surface, never rebuild the form.
   def refresh_due?; false; end
@@ -122,6 +124,7 @@ class GameRoomScrabblePreview
     return unless data['replies'].is_a?(Array) && data['replies'].size <= 8 && data['replies'].all? { |value| token?(value) }
     tiles = validated_tiles(data['tiles'])
     return unless tiles
+    initial = @awaiting_snapshot || @remote_stream != data['stream']
     if @remote_stream != data['stream']
       # A delayed old stream cannot replace a new client's snapshot. A new
       # stream must first echo THIS receiver's fresh request nonce.
@@ -135,11 +138,26 @@ class GameRoomScrabblePreview
       @remote_stream, @remote_sequence = data['stream'], 0
     end
     return if data['sequence'] <= @remote_sequence
+    announce_changes(@remote, tiles) unless initial
     @remote_sequence, @remote = data['sequence'], tiles
     @awaiting_snapshot = false
   end
 
   def token?(value); value.is_a?(String) && value.match?(/\A[0-9a-f]{16}\z/); end
+
+  def announce_changes(before, after)
+    return unless @program.class.respond_to?(:normalized_settings) && @program.class.normalized_settings['scrabble_draft_speech'] == true
+    return unless GameRoomBackgroundPolicy.speech?(@program, covered: @progress&.covered?)
+    player = GameRoomParticipants.display_name(@scope[1])
+    [[before - after, _('%{player} removes %{letter} from %{field}.')],
+      [after - before, _('%{player} places %{letter} on %{field}.')]].each do |tiles, message|
+      tiles.each do |tile|
+        text = GameRoomContent.utf8(message) % {player: GameRoomContent.utf8(player),
+          letter: tile[:letter].upcase, field: GameRoomScrabbleRules.field(tile[:position])}
+        speak(text, stop: false, break_sequence: false)
+      end
+    end
+  end
 
   def validated_tiles(tiles)
     return unless tiles.is_a?(Array) && tiles.size <= 7

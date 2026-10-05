@@ -52,7 +52,10 @@ module GameRoomGames
     }.freeze
     REVIEW_CODE_DECISIONS = REVIEW_DECISION_CODES.invert.freeze
 
-    def notification_option_keys(_options); %w[answer_language]; end
+    def notification_option_keys(_options); %w[answer_language target_score]; end
+    def notification_variant(options)
+      [notification_choice(options, "answer_language"), notification_points(options, "target_score")].compact.join(", ")
+    end
 
     def id
       "categories"

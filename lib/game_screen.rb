@@ -21,6 +21,7 @@ require_relative "presentation_replay"
 require_relative "game_background_presentation"
 require_relative "game_background_policy"
 require_relative "board_preferences"
+require_relative "game_sound_output"
 
 require_relative "game_room_localization"
 
@@ -49,6 +50,7 @@ class GameScreen
     manage_computer: nil,
     manage_observer: nil,
     manage_teams: nil,
+    save_table_history: nil,
     save_game: nil,
     edit_options: nil,
     abort_game: nil,
@@ -59,6 +61,7 @@ class GameScreen
     @manage_computer = manage_computer
     @manage_observer = manage_observer
     @manage_teams = manage_teams
+    @save_table_history = save_table_history
     @save_game = save_game
     @edit_options = edit_options
     @abort_game = abort_game
@@ -145,6 +148,7 @@ class GameScreen
   # native Messages. The normal screen later adopts this exact presentation.
   def start_covered_session(covered:, activity_cursor:)
     @runner_covered = covered
+    start_sound_output
     # Restoring a saved match must not announce its archived moves again.
     event_presenter.last_seen_event_id = @session["__event_id_base"].to_i
     event_presenter.last_seen_activity_id = activity_cursor
@@ -157,11 +161,13 @@ class GameScreen
     stop_session_runner
     event_presenter.event_presentation&.close
     @game_client&.close
+    @sound_output&.close
   end
 
   def table_activity_cursor; event_presenter.last_seen_activity_id; end
 
   def run
+    start_sound_output
     return :back unless start_game_client
     start_session_runner
     loop do
@@ -250,6 +256,9 @@ class GameScreen
         return :back if switch_to_new_session == false
       when :rules
         show_game_rules(replay)
+      when :save_table_history
+        @save_table_history&.call(combined_history_entries(replay))
+        @suppress_surface_focus = true
       when :save_game
         surface = @layout&.surface
         if surface.respond_to?(:save_game_error) && (error = surface.save_game_error)
@@ -331,6 +340,7 @@ class GameScreen
     @game_client&.close
     @layout&.begin_bindings
     @layout.game_client = nil if @layout
+    @sound_output&.close
   end
 
   # Used only when a screen has not received its first valid snapshot yet.
@@ -353,6 +363,11 @@ class GameScreen
   end
 
   private
+
+  def start_sound_output
+    return if @sound_output && GameRoomSoundOutput.current(@program).equal?(@sound_output)
+    @sound_output = GameRoomSoundOutput.new(@program, audio_game: @game.audio_game?, covered: -> { table_presentation_covered? })
+  end
 
   def start_session_runner
     return if @session_runner
@@ -385,6 +400,7 @@ class GameScreen
   # copied durable state; its independent active-UI timer advances the engine.
   # The same event/activity cursors and sound queue are used before/after cover.
   def present_background_session(runner)
+    @sound_output&.tick
     return if event_presenter.last_seen_event_id == nil
     packet = runner.presentation_snapshot
     if packet && !packet.equal?(@background_presented_snapshot)
@@ -420,6 +436,7 @@ class GameScreen
 
   def background_session_closed
     @game_client&.close if @game.background_client?
+    @sound_output&.close
   end
 
   def present_session_membership(members)

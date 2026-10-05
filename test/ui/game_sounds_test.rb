@@ -164,13 +164,13 @@ assert(tracker.observe([viewer, "bot:1:1"]).empty?, "a computer was announced as
 
 program = Object.new
 played = []
-program.define_singleton_method(:play_sound_from_asset) { |name| played << name }
+program.define_singleton_method(:play_sound_from_asset) { |name, **_options| played << name }
 GameRoomSounds.play_all(program, ["welcome", "connect", "chatmsg", "not_registered"])
 assert(played == ["connect", "chatmsg"], "the sound player rejected a chat asset or accepted an unknown asset")
 
 filtered_program = Object.new
 filtered_played = []
-filtered_program.define_singleton_method(:play_sound_from_asset) { |name| filtered_played << name }
+filtered_program.define_singleton_method(:play_sound_from_asset) { |name, **_options| filtered_played << name }
 filtered_program.define_singleton_method(:game_room_sound_enabled?) { |name| name == "connect" }
 GameRoomSounds.play_all(filtered_program, ["roll", "connect", "chatmsg"])
 assert(filtered_played == ["connect"], "the sound player ignored the Game Room category filter")

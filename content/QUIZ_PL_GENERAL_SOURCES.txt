@@ -1,0 +1,53 @@
+Polish general knowledge — sources and rights (data version 8)
+
+This set replaces the earlier Wikidata-based Polish general set. Its legacy
+pack and set identifiers remain unchanged so that the existing Polish general
+selection still works. The question database, checksum and data version change.
+
+PolQA
+Authors: Piotr Rybak, Piotr Przybyła, Maciej Ogrodniczuk, IPI PAN.
+https://huggingface.co/datasets/ipipan/polqa
+Pinned revision: d78d036ef08ab3b9f4d85a2893f4d3a0c95a6f37
+License: Creative Commons Attribution-ShareAlike 4.0 International.
+https://creativecommons.org/licenses/by-sa/4.0/
+Adaptation: selection for four-choice play, categories and three additional
+answer choices. Confirmed answer errors were corrected after reviewing flagged
+records; questions whose faulty premises would require rewriting were excluded.
+Original question wording is preserved apart from approved minimal edits to
+remove embedded answer lists and make the prompt fit four-choice play. Necessary
+grammatical adjustments and dependent answer choices are recorded with the edits.
+The unmodified earlier export and the before/after editorial decisions are
+retained separately from the runtime pack.
+
+1z10, part of MAUPQA
+Authors: Piotr Rybak and Maciej Ogrodniczuk, IPI PAN.
+https://huggingface.co/datasets/ipipan/maupqa
+Pinned revision: cdaceb38daba793c1dd5bb13fb3d91450242d464
+License according to the dataset card: Creative Commons Attribution-ShareAlike
+4.0 International. https://creativecommons.org/licenses/by-sa/4.0/
+The source contains automatically transcribed television quiz questions.
+Adaptation: selection, duplicate removal, clear spelling/transcription repairs,
+verified answer keys, categories and three additional answer choices.
+Unclear transcriptions and inherently two-choice questions are excluded.
+
+The adapted PolQA and MAUPQA portions remain under CC BY-SA 4.0.
+
+Milionerzy
+Source: the public question archive at https://www.polsat.pl/.
+Each retained question stores its individual source page URL. Original answer
+choices are retained except for explicit editorial corrections.
+This portion is NOT offered under the PolQA/MAUPQA Creative Commons license.
+Its inclusion relies on the application owner's confirmation on 2026-10-04
+that permission or material with reuse rights is available. That confirmation
+does not grant third parties an independent right to redistribute this portion.
+
+Editorial adaptation and additional answer choices were prepared with AI
+assistance for Power Games. The original dataset and programme authors did not
+write the added distractors and do not endorse this adaptation.
+Each question retains its source ID, source_dataset, source_license and URL.
+Data version 8 minimally revises 410 prompts with embedded alternatives. It
+keeps all 14,887 questions, their order and categories. Answer lists are removed
+without deleting factual clues; some answer forms are adjusted for grammar or
+to keep the meaning of a comparison after removing the three-choice restriction.
+The readable review lists are generated from the runtime data with
+tools/export-quiz-text.rb and are not duplicated inside the installer.

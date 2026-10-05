@@ -104,8 +104,8 @@
       },
       "paragraphs": [
         {
-          "en": "The first server is drawn at random once at the start of the match, whether you play a person or a bot. Service then changes after every two completed points. This sequence continues across sets and during play for a two-point lead. A new set does not restart it, and there is no switch to one serve each at deuce.",
-          "pl": "Gra losuje pierwszego serwującego tylko raz, na początku meczu, zarówno z człowiekiem, jak i z botem. Później serwis zmienia się co dwa rozegrane punkty. Ta kolejność trwa przez cały mecz, także między setami i podczas gry na przewagi. Nowy set jej nie rozpoczyna od nowa, a przy remisie nie przechodzi się na jeden serwis na osobę."
+          "en": "The first server is drawn at random at the start of the match, whether you play a person or a bot. Players take turns starting each new set: the player who starts the first also starts the third, while the opponent starts the second and fourth. Within each set, service changes after every two completed points, including during play for a two-point lead. There is no switch to one serve each at deuce.",
+          "pl": "Gra losuje pierwszego serwującego na początku meczu, zarówno z człowiekiem, jak i z botem. Kolejne sety rozpoczynacie na zmianę: osoba zaczynająca pierwszy set zacznie też trzeci, a jej przeciwnik — drugi i czwarty. W obrębie każdego seta serwis zmienia się co dwa rozegrane punkty, także podczas gry na przewagi. Przy remisie nie przechodzi się na jeden serwis na osobę."
         },
         {
           "en": "To win a set, score at least 7 points and lead by at least two. For example, 7:6 does not end the set, but 8:6 does. If neither player has a two-point lead, keep playing until one does.",

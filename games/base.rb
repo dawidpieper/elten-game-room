@@ -41,6 +41,7 @@ module GameRoomGames
     # same room. GameScreen closes the previous client before building this one.
     def build_client(_program, **_services); nil; end
     def background_client?; false; end
+    def audio_game?; false; end
     # Turn-based model/actions can continue behind another native scene. A
     # realtime client owns its simulation, focus and pause protocol separately.
     def session_runner?; true; end

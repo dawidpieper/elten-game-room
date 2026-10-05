@@ -10,7 +10,6 @@ def p_(_context, text)
 end
 
 
-require "digest"
 require "json"
 require_relative "../../../lib/game_content"
 require_relative "../../../content/languages"
@@ -51,37 +50,22 @@ assert(packs.all? { |pack| pack && !pack.verified? }, "rules/defaults/options ea
 audit = JSON.parse(File.read(File.expand_path("../../../content/QUIZ_IMPORT_REPORT.json", __dir__), encoding: "UTF-8"))["packs"]
 reference = JSON.parse(File.read(File.expand_path("../../fixtures/quiz/questions.json", __dir__), encoding: 'UTF-8'))
 expected_count = lambda { |id| reference.fetch('packs').fetch(id).fetch('count') }
+polish_reference = reference.fetch('packs').fetch(polish_pack.id)
+assert(polish_pack.set_id == "quiz.wikidata" && polish_pack.language_id == "pl-PL", "the Polish general set changed its identity")
+assert(polish_pack.title == "Wiedza ogólna", "the Polish general set has an outdated title")
+assert(polish_pack.version == polish_reference.fetch('version'), "the Polish general set has an unexpected data version")
 polish_questions = polish_pack.data["questions"]
-assert(polish_questions.length == expected_count.call(polish_pack.id), "the Polish Wikidata question pack lost questions outside reviewed corrections")
-sport_questions = polish_questions.select { |question| question["category"] == "sport" }
-assert(sport_questions.length == 2_317, "the audited sport category has an unexpected size")
-undated_coach_questions = sport_questions.select do |question|
-  prompt = question["prompt"]
-  coach_relation = prompt.match?(/\b(?:trener\w*|prowadz\w*|szkoleniow\w*|selekcjoner\w*|menedżer\w*)\b/i) ||
-    (prompt.match?(/\btrenuj\w*\b/i) && !prompt.start_with?("Skoczek "))
-  coach_relation && !prompt.match?(/\b(?:18|19|20)\d{2}\b/)
-end
-assert(undated_coach_questions.empty?, "an undated coach question survived review")
-reviewed = sport_questions.select { |question| question["source_links"] }
-assert(reviewed.length == 61, "the reviewed sport replacements are incomplete")
-assert(reviewed.count { |question| question["prompt"].start_with?("Klub ") } == 26, "a reviewed club-year question is missing")
-assert(reviewed.count { |question| question["prompt"].start_with?("Mistrzostwa świata w piłce nożnej ", "Euro ") } == 30, "a reviewed competition question is missing")
-reviewed_payload = reviewed.map do |question|
-  [question["prompt"], question["correct"], question["wrong"], question["source_links"]]
-end.sort_by(&:first)
-reviewed_digest = Digest::SHA256.hexdigest(JSON.generate(reviewed_payload))
-assert(reviewed_digest == "abdae78be5bcdd5ef85b4fe4f9f1547a9f070c44e7074b01988653ab30f709d9", "reviewed sport facts or sources changed")
-lewandowski_answers = {
-  "W którym roku Robert Lewandowski strzelił pięć goli w dziewięć minut?" => "2015",
-  "Przeciw któremu klubowi Robert Lewandowski strzelił pięć goli w dziewięć minut?" => "VfL Wolfsburg",
-  "Ile goli Robert Lewandowski strzelił w Bundeslidze w sezonie 2020/2021?" => "41",
-  "Z którym klubem Robert Lewandowski wygrał Ligę Mistrzów w 2020 roku?" => "Bayern Monachium",
-  "Ile goli Robert Lewandowski strzelił w Lidze Mistrzów 2019/2020?" => "15"
-}
-lewandowski_answers.each do |prompt, answer|
-  question = reviewed.find { |candidate| candidate["prompt"] == prompt }
-  assert(question && question["correct"] == answer && !question["source_links"].empty?, "a sourced Robert Lewandowski question is missing")
-end
+assert(polish_questions.length == expected_count.call(polish_pack.id), "the reviewed Polish general set has an unexpected question count")
+polish_sources = polish_questions.map { |question| question.fetch("source_dataset") }.uniq.sort
+assert(polish_sources == ["1z10/MAUPQA", "Milionerzy/Polsat", "PolQA"], "the Polish general set lost a source or includes the retired pack")
+polish_options = game.normalize_options("content_set_id" => "quiz.wikidata", "content_language_id" => "pl-PL")
+assert(game.selected_content_pack(polish_options).equal?(polish_pack), "the Polish options resolve to another pack")
+assert(game.validation_error(polish_options, player_count: 2) == nil, "the reviewed Polish general set cannot start a match")
+assert(game.send(:pack_questions, polish_options) == polish_questions, "runtime validation silently dropped reviewed Polish questions")
+stale_polish = polish_options.merge("content_pack_version" => polish_pack.version - 1)
+assert(game.selected_content_pack(stale_polish) == nil && game.validation_error(stale_polish, player_count: 2) != nil, "a table using the previous Polish data version was accepted")
+changed_polish = polish_options.merge("content_pack_checksum" => "0" * 64)
+assert(game.selected_content_pack(changed_polish) == nil && game.validation_error(changed_polish, player_count: 2) != nil, "a table with different Polish question content was accepted")
 assert(polish_pack.verified? && packs.drop(1).none?(&:verified?), "loading Polish also loaded an unrelated pack")
 witcher_pack = GameRoomContent.registry.pack("quiz.witcher.pl")
 assert(witcher_pack.data["questions"].length == expected_count.call(witcher_pack.id) && witcher_pack.verified?, "the cleaned Witcher data did not verify")

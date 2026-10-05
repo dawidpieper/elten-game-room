@@ -361,6 +361,24 @@ module GameRoomChangelog
         "Thousand has two new variants: four individual players, with one sitting out each deal in turn, and two teams of two. Team play uses a four-card talon and shared scores, barrels and surrender penalties. Bots can play both variants.",
         "A distinct sound now accompanies a declined invitation in the sender's table history. It follows the notification volume and mute settings."
       ].freeze
+    ).freeze,
+    Entry.new(
+      version: "2.0.4.4",
+      build: 243,
+      changes: [
+        "Added a completely new Polish question set of much better quality. The questions come from existing collections based on popular television quiz shows such as Jeden z dziesieciu, rather than being invented by AI. Have fun playing!",
+        "The new General knowledge set has 11 broad categories: Geography, History, Culture, Literature, Science, Nature, Religion, Sport, Language, Society and Everyday life. Each contains several hundred questions or more. Other languages and the Witcher sets are unchanged.",
+        "Krowa leaderboard search now also finds words from past Daily Krowa games and opens the ranking for the matching day. Today's answer remains hidden.",
+        "Known languages are now all unchecked by default, independently of the main interface language. Your saved choices are preserved. Fixed mixed-language labels in Cat, head, tail; the game's name stays the same in every language.",
+        "Table lists and the widget now include the same short variant description as notifications. UNO, Spades and Categories also show the point limit, and Audio Ball shows the number of sets needed to win.",
+        "In Audio Ball, players now take turns starting successive sets. Service still changes every two points within each set.",
+        "In Scrabble, Ctrl+P toggles announcements of letters placed on or removed from the board before a word is submitted. This personal setting is off by default and is remembered for future games.",
+        "General settings now let you mute game sounds after switching to another window: all games, audio games only, or no muting. The default is no muting. Chat and table notifications remain audible, and the turn ding keeps its separate setting.",
+        "Added 60 Polish words to Krowa.",
+        "Added a Power Games guide under README in the main menu, after Settings and before What's new. It covers the program's features, important shortcuts, the widget, invitations, settings and saved games. It follows your interface language: English, Polish, Czech, Spanish or Russian.",
+        "Game rules now have navigable headings and a table of contents. H and Shift+H move between headings, K and Shift+K between links, and Enter on a contents link opens its chapter.",
+        "Ctrl+Shift+S or the table menu now lets you save the available game and chat history to a TXT file without closing the table."
+      ].freeze
     ).freeze
   ].freeze
 

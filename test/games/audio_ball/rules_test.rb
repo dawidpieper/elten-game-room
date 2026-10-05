@@ -198,7 +198,7 @@ audio_ball_test('seven-point boundary keeps a two-point lead and unlimited deuce
   end
 end
 
-audio_ball_test('complete one-, two- and three-set victories, deuce and continuous two-point service blocks') do
+audio_ball_test('complete one-, two- and three-set victories, deuce and alternating set starters') do
   [1, 2, 3].each do |needed|
     [0, 1].each do |first_server|
       session = audio_ball_session(options: {'sets_to_win' => needed})
@@ -207,13 +207,20 @@ audio_ball_test('complete one-, two- and three-set victories, deuce and continuo
       set_winners = Array.new(needed - 1) { [0, 1] }.flatten + [1]
       totals = [0, 0]
       set_winners.each_with_index do |set_winner, set_index|
+        assert(replay.state[:server] == (first_server + set_index) % 2, 'successive sets did not alternate their first server')
         deuce = needed == 1 || set_index.odd?
         points = deuce ? Array.new(6) { [0, 1] }.flatten + [set_winner, 1 - set_winner, set_winner, set_winner] : Array.new(7, set_winner)
         points.each_with_index do |side, index|
           replay = audio_ball_score(game, session, events, repository, side, timeout: index == points.length - 1)
           assert(replay.state[:rally] == events.length - 1, 'rally counter reset at a set boundary')
-          expected_server = (first_server + (events.length - 1) / 2) % 2
-          assert(replay.state[:server] == expected_server, 'service rotation reset between sets or switched every point at deuce')
+          completed = index == points.length - 1
+          final = set_index == set_winners.length - 1
+          expected_server = if completed && !final
+            (first_server + set_index + 1) % 2
+          else
+            (first_server + set_index + (index + 1) / 2) % 2
+          end
+          assert(replay.state[:server] == expected_server, 'wrong service block within a set or wrong next-set starter')
           if index < points.length - 1
             assert(replay.state[:sets] == totals && replay.state[:set_number] == set_index + 1 && !replay.finished?, 'set ended without seven points and a two-point lead')
           end

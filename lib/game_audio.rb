@@ -1,3 +1,4 @@
+require_relative 'game_sound_output'
 # Optional per-game audio, using the program's normal ELTEN output device.
 # This class owns streams, not game state or keyboard bindings.
 class GameRoomAudio
@@ -26,12 +27,12 @@ class GameRoomAudio
         @music = @program.create_sound_from_asset(desired, loop: true, sample: false)
         raise "Cannot open music asset" unless @music
         @program.manage(@music)
-        @music.volume = @settings["music_volume"] / 100.0 * shared_volume(desired)
+        GameRoomSoundOutput.apply(@program, @music, @settings["music_volume"] / 100.0 * shared_volume(desired), continuous: true)
         @music.play
         @asset = desired
       end
     elsif @music
-      @music.volume = @settings["music_volume"] / 100.0 * shared_volume(desired)
+      GameRoomSoundOutput.apply(@program, @music, @settings["music_volume"] / 100.0 * shared_volume(desired), continuous: true)
     end
   rescue StandardError => error
     close
@@ -42,7 +43,7 @@ class GameRoomAudio
     return unless asset && @settings["effects"]
     volume = shared_volume(asset) * @settings["effects_volume"] / 100.0
     return unless volume.positive?
-    @program.play_sound_from_asset(asset, sample: false, max_voices: 4, volume: volume)
+    GameRoomSoundOutput.play(@program, asset, sample: false, max_voices: 4, volume: volume)
   rescue StandardError => error
     Log.warning("Game Room effect: #{error.class}: #{error.message}") if defined?(Log)
   end
